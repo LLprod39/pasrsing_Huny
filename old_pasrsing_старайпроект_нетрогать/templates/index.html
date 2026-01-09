@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synergy LMS Automation</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎓 Synergy LMS Automation</h1>
+            <div class="header-actions">
+                <button id="syncAll" class="btn btn-primary">🚀 Полная синхронизация</button>
+                <button id="syncSemesters" class="btn btn-secondary">🔄 Только семестры</button>
+                <span id="syncStatus" class="status-text"></span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <h2>Семестры</h2>
+                <div id="semestersList" class="semesters-list">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </aside>
+
+            <!-- Main area -->
+            <main class="content">
+                <div id="coursesView" class="view">
+                    <div class="view-header">
+                        <h2>Курсы</h2>
+                        <button id="syncCourses" class="btn btn-secondary" disabled>🔄 Синхронизировать курсы</button>
+                    </div>
+                    <div id="coursesList" class="courses-list">
+                        <p class="empty-state">Выберите семестр для просмотра курсов</p>
+                    </div>
+                </div>
+
+                <div id="materialsView" class="view hidden">
+                    <div class="view-header">
+                        <button id="backToCourses" class="btn btn-text">← Назад к курсам</button>
+                        <h2 id="courseTitle"></h2>
+                        <div class="course-actions">
+                            <button id="syncMaterials" class="btn btn-secondary">🔄 Синхронизировать материалы</button>
+                            <button id="autoCompleteCourse" class="btn btn-success">▶ Автоматически пройти курс</button>
+                        </div>
+                    </div>
+                    <div class="course-info">
+                        <span id="courseProgress"></span>
+                        <span id="courseMaterialsCount"></span>
+                    </div>
+                    <div id="materialsList" class="materials-list"></div>
+                </div>
+            </main>
+
+            <!-- Tasks panel -->
+            <aside class="tasks-panel">
+                <h2>Задачи автоматизации</h2>
+                <div id="tasksList" class="tasks-list">
+                    <p class="empty-state">Нет активных задач</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

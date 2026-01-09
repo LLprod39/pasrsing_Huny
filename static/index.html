@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synergy LMS Parser - Premium Controls</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <span>Synergy Bot</span>
+            </div>
+            <div class="nav-items">
+                <div class="nav-item active" data-tab="dashboard">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" data-tab="semesters">
+                    <i class="fa-solid fa-folder-tree"></i>
+                    <span>Semesters</span>
+                </div>
+                <div class="nav-item" data-tab="logs">
+                    <i class="fa-solid fa-terminal"></i>
+                    <span>Console Logs</span>
+                </div>
+            </div>
+            <div class="user-profile">
+                <div class="avatar">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <div class="user-info">
+                    <span class="name">Student</span>
+                    <span class="status">Connected</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-bar">
+                <div class="breadcrumbs">
+                    <span id="page-title">Dashboard</span>
+                </div>
+                <div class="actions">
+                    <div
+                        style="display:flex; align-items:center; gap:8px; margin-right:16px; font-size:12px; color:var(--text-muted)">
+                        <label for="max-tabs-input">Max Tabs:</label>
+                        <input type="number" id="max-tabs-input" value="2" min="1" max="10"
+                            style="width:50px; padding:4px; border-radius:6px; border:1px solid var(--border-color); background:rgba(255,255,255,0.05); color:white; text-align:center">
+                    </div>
+                    <button id="relogin-btn" class="btn btn-secondary">
+                        <i class="fa-solid fa-rotate-right"></i> Re-Login
+                    </button>
+                    <div class="theme-toggle">
+                        <i class="fa-solid fa-moon"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Views -->
+
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view active">
+                <div class="welcome-card">
+                    <h1>Welcome back!</h1>
+                    <p>Ready to automate your learning process? Select a semester to get started.</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="icon-bg purple">
+                            <i class="fa-solid fa-book"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Semesters</h3>
+                            <span id="stat-semesters">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon-bg blue">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Active Courses</h3>
+                            <span id="stat-courses">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon-bg green">
+                            <i class="fa-solid fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Tasks Completed</h3>
+                            <span id="stat-tasks">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Semesters & Courses View -->
+            <div id="semesters-view" class="view">
+                <div class="content-layout">
+                    <!-- Column 1: Semester List -->
+                    <div class="column" id="semester-list-col">
+                        <h3><i class="fa-solid fa-calendar-days"></i> Semesters</h3>
+                        <div id="semester-list" class="list-container">
+                            <!-- Items injected by JS -->
+                            <div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Course List -->
+                    <div class="column hidden" id="course-list-col">
+                        <h3><i class="fa-solid fa-book-open"></i> Courses</h3>
+                        <div id="course-list" class="list-container">
+                            <!-- Items injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Column 3: Material List -->
+                    <div class="column hidden" id="material-list-col">
+                        <h3><i class="fa-solid fa-file-contract"></i> Materials</h3>
+                        <div id="material-list" class="list-container">
+                            <!-- Items injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs View -->
+            <div id="logs-view" class="view">
+                <div class="console-container">
+                    <div class="console-header">
+                        <span><i class="fa-solid fa-terminal"></i> Parser Output</span>
+                        <div class="console-actions">
+                            <button class="btn-icon" id="clear-logs" title="Clear"><i
+                                    class="fa-solid fa-trash"></i></button>
+                            <label class="switch">
+                                <input type="checkbox" id="auto-scroll" checked>
+                                <span class="slider round"></span>
+                                <span class="label-text">Auto-scroll</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="logs-output" class="console-output">
+                        <!-- Logs injected by JS -->
+                        <div class="log-line info">System initialized... waiting for connection.</div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Login/Loading Overlay -->
+    <div id="overlay" class="overlay">
+        <div class="overlay-content GLASS">
+            <div class="loader"></div>
+            <h2 id="overlay-text">Connecting to Synergy...</h2>
+            <p id="overlay-subtext">Please wait while we initialize the secure connection.</p>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="js/app.js" type="module"></script>
+</body>
+
+</html>

@@ -158,7 +158,7 @@ def main():
                         
                         if material_type == 'test':
                             logger.info(f"Проходим тест: {material['name']}")
-                            result = test_solver.solve_test(material['url'], material['name'])
+                            result = test_solver.solve_test(material['url'], material['name'], course_url=material.get('course_url'))
                             if result.get('solved'):
                                 test_count += 1
                                 processed_count += 1

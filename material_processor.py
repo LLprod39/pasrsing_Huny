@@ -145,10 +145,21 @@ class MaterialProcessor:
             if progress_percent is not None:
                 logger.info(f"Прогресс материала: {progress_percent}%")
 
-            # Если уже 100% — не пересматриваем, просто подтверждаем
+            # Если уже 100% — можно пропустить, но для видео лучше перепроверять по времени/длительности.
+            # (иначе бывают случаи: 100% отображается, но фактически недосмотрено несколько секунд).
             if progress_percent is not None and progress_percent >= 100:
-                results['processed'] = True
-                logger.info("Материал уже 100% (по прогрессу) — пропускаем повторный просмотр")
+                material_type_now = material.get('type', 'material')
+                should_skip_by_progress = material_type_now != 'video'
+                # Если тип не video, но на странице есть плеер — не пропускаем до проверки в _process_video.
+                if material_type_now != 'video':
+                    try:
+                        if self._page_contains_video():
+                            should_skip_by_progress = False
+                    except Exception:
+                        pass
+                if should_skip_by_progress:
+                    results['processed'] = True
+                    logger.info("Материал уже 100% (по прогрессу) — пропускаем повторный просмотр")
 
             # Если материал не распознан как video по URL/названию, но на странице есть видеоплеер,
             # переключаемся на обработку видео (актуально для /lntools/mcresource/view/...).
@@ -356,23 +367,9 @@ class MaterialProcessor:
         try:
             logger.info(f"Обрабатываем видео: {material['name']}")
 
-            # Если прогресс уже 100% — пересмотр не нужен
-            if progress_percent is not None and progress_percent >= 100:
-                logger.info("Видео уже завершено (прогресс 100%) — пропускаем просмотр")
-                return True
-
-            # Если можем заранее получить длительность и видим, что уже просмотрено достаточно — пропускаем
-            try:
-                duration_guess = self._probe_video_duration_seconds()
-                if duration_guess and viewed_seconds is not None:
-                    # допуск 5 секунд
-                    if viewed_seconds >= max(0, duration_guess - 5):
-                        logger.info(
-                            f"Видео уже просмотрено достаточно: viewed={viewed_seconds}s >= duration={duration_guess}s — пропускаем"
-                        )
-                        return True
-            except Exception as e_probe:
-                logger.debug(f"Не удалось заранее определить длительность видео: {e_probe}")
+            # ВАЖНО: длительность видео часто становится доступной только ПОСЛЕ запуска плеера
+            # (до этого duration может быть 0/NaN/inf). Поэтому решение "досматривать или нет"
+            # принимаем внутри _find_and_start_video(), после реального старта видео и получения duration.
 
             # Сначала ищем видео в iframes (видео обычно в iframe)
             video_processed = False
@@ -396,7 +393,7 @@ class MaterialProcessor:
                                 "iframe_src": iframe_src[:100] if iframe_src else "empty"
                             }, "E")
 
-                            video_processed = self._find_and_start_video(material)
+                            video_processed = self._find_and_start_video(material, viewed_seconds=viewed_seconds)
 
                             if video_processed:
                                 logger.info(f"Видео найдено и обработано в iframe #{index}")
@@ -420,7 +417,7 @@ class MaterialProcessor:
                                         self.driver.switch_to.frame(nested_index)
                                         time.sleep(3)
 
-                                        video_processed = self._find_and_start_video(material)
+                                        video_processed = self._find_and_start_video(material, viewed_seconds=viewed_seconds)
                                         if video_processed:
                                             logger.info(f"✓ Видео найдено и обработано во вложенном iframe #{nested_index}")
                                             break
@@ -455,7 +452,7 @@ class MaterialProcessor:
                 self._debug_log("material_processor.py:220", "Поиск видео на основной странице", {
                     "reason": "не найдено в iframe"
                 }, "E")
-                video_processed = self._find_and_start_video(material)
+                video_processed = self._find_and_start_video(material, viewed_seconds=viewed_seconds)
 
             if video_processed:
                 logger.info(f"Просмотр видео '{material['name']}' завершен.")
@@ -719,7 +716,12 @@ class MaterialProcessor:
 
         return False
     
-    def _find_and_start_video(self, material: Dict) -> Optional[object]:
+    def _find_and_start_video(
+        self,
+        material: Dict,
+        viewed_seconds: Optional[int] = None,
+        completion_tolerance_seconds: int = 5,
+    ) -> Optional[object]:
         """Находит видео, запускает его и ждет полного просмотра"""
         PLACEHOLDER_VIDEO_SRC = "synergy_in.mp4"
         INTRO_DURATION = 5  # Длительность заставки в секундах
@@ -1286,11 +1288,27 @@ class MaterialProcessor:
                         logger.warning("Не удалось получить длительность видео, используем минимальное время")
                         duration_in_seconds = Config.MIN_VIEW_TIME
                     
-                    # Ждем просмотр видео (заставка уже прошла после клика на Play, ждем только длительность)
-                    logger.info(f"Ожидаем просмотр видео: {duration_in_seconds} секунд (заставка уже прошла)")
-                    
-                    # Ждем длительность видео
-                    time.sleep(duration_in_seconds)
+                    # Решение "досматривать или подтверждать" принимаем ТОЛЬКО после реального запуска видео
+                    # и получения duration (см. требование: сначала запустить видео, потом сравнить).
+                    if duration_in_seconds and duration_in_seconds > 0 and viewed_seconds is not None:
+                        tol = max(0, int(completion_tolerance_seconds))
+                        if viewed_seconds >= max(0, duration_in_seconds - tol):
+                            logger.info(
+                                f"Видео уже досмотрено по времени: viewed={viewed_seconds}s >= duration={duration_in_seconds}s - tol={tol}s — пропускаем просмотр"
+                            )
+                            return True
+
+                        remaining = max(0, duration_in_seconds - viewed_seconds)
+                        # небольшой буфер, чтобы система точно засчитала завершение
+                        remaining_with_buffer = min(duration_in_seconds, remaining + 2)
+                        logger.info(
+                            f"Досматриваем видео: duration={duration_in_seconds}s, viewed={viewed_seconds}s, осталось={remaining_with_buffer}s (включая буфер)"
+                        )
+                        time.sleep(remaining_with_buffer)
+                    else:
+                        # fallback: если не удалось корректно сравнить — смотрим полную длительность
+                        logger.info(f"Ожидаем просмотр видео: {duration_in_seconds} секунд (заставка уже прошла)")
+                        time.sleep(duration_in_seconds)
                     
                     logger.info(f"Просмотр видео '{material['name']}' завершен.")
                     return True

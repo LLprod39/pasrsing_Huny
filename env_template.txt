@@ -17,9 +17,24 @@ MIN_VIEW_TIME=30
 SCROLL_DELAY=2
 PAGE_LOAD_TIMEOUT=30
 
+# Камера/микрофон (нужно для идентификации перед тестами)
+# 1 = включено (как в старом проекте), 0 = выключено
+ALLOW_MEDIA_STREAM=1
+
 # Настройки для тестов
 TEST_STRATEGY=random
 MAX_TEST_ATTEMPTS=3
+
+# AI (для TEST_STRATEGY=ai)
+# Выберите провайдера (пока реализован grok)
+AI_PROVIDER=grok
+AI_TIMEOUT_SECONDS=60
+
+# Grok (xAI)
+# ВАЖНО: ключ НЕ коммитьте в git. Храните только в .env.
+GROK_API_KEY=your_grok_api_key
+GROK_MODEL=grok-4-1-fast-reasoning
+GROK_BASE_URL=https://api.x.ai/v1
 
 # Логирование
 LOG_LEVEL=INFO

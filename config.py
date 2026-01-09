@@ -28,10 +28,22 @@ class Config:
     MIN_VIEW_TIME = int(os.getenv('MIN_VIEW_TIME', '30'))
     SCROLL_DELAY = float(os.getenv('SCROLL_DELAY', '2'))
     PAGE_LOAD_TIMEOUT = int(os.getenv('PAGE_LOAD_TIMEOUT', '30'))
+
+    # Медиа-разрешения (нужно для идентификации/камеры перед тестами)
+    # В старом проекте это было включено по умолчанию.
+    ALLOW_MEDIA_STREAM = os.getenv("ALLOW_MEDIA_STREAM", "1").strip() not in ["0", "false", "False", "no", "NO"]
     
     # Настройки тестов
     TEST_STRATEGY = os.getenv('TEST_STRATEGY', 'random')  # random, correct, ai
     MAX_TEST_ATTEMPTS = int(os.getenv('MAX_TEST_ATTEMPTS', '3'))
+
+    # AI (для TEST_STRATEGY=ai)
+    AI_PROVIDER = os.getenv("AI_PROVIDER", "grok")  # grok, ...
+    AI_TIMEOUT_SECONDS = int(os.getenv("AI_TIMEOUT_SECONDS", "60"))
+
+    GROK_API_KEY = os.getenv("GROK_API_KEY", "").strip()
+    GROK_MODEL = os.getenv("GROK_MODEL", "grok-4-1-fast-reasoning").strip()
+    GROK_BASE_URL = os.getenv("GROK_BASE_URL", "https://api.x.ai/v1").strip()
     
     # Логирование
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')

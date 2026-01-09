@@ -1,0 +1,28 @@
+# Основные зависимости для Synergy LMS Parser
+# Версия Python: 3.7+
+
+# Автоматизация браузера
+selenium>=4.0.0
+webdriver-manager>=3.8.0
+
+# Парсинг HTML
+beautifulsoup4>=4.9.0
+lxml>=4.6.0
+
+# HTTP запросы
+requests>=2.25.0
+urllib3>=1.26.0
+
+# Прогресс-бары и утилиты
+tqdm>=4.60.0
+
+# Обработка данных
+dataclasses>=0.6; python_version<"3.7"
+
+# Дополнительные утилиты
+python-dateutil>=2.8.0
+
+# Web Application
+Flask>=2.3.0
+Flask-SQLAlchemy>=3.0.0
+Flask-CORS>=4.0.0

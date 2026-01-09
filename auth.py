@@ -52,6 +52,20 @@ class AuthManager:
             options.add_argument('--no-sandbox')
             # Убираем признаки автоматизации
             options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+
+            # Как в старом проекте: авто-разрешения для камеры/микрофона (нужно для идентификации перед тестами)
+            if Config.ALLOW_MEDIA_STREAM:
+                options.add_argument("--use-fake-ui-for-media-stream")
+                options.add_argument("--use-fake-device-for-media-stream")
+                prefs = {
+                    "profile.managed_default_content_settings.media_stream": 1,
+                    "profile.managed_default_content_settings.media_stream_mic": 1,
+                    "profile.managed_default_content_settings.media_stream_camera": 1,
+                    "profile.default_content_setting_values.media_stream": 1,
+                    "profile.default_content_setting_values.media_stream_mic": 1,
+                    "profile.default_content_setting_values.media_stream_camera": 1,
+                }
+                options.add_experimental_option("prefs", prefs)
         
         try:
             driver = webdriver.Chrome(options=options)
