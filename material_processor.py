@@ -133,9 +133,26 @@ class MaterialProcessor:
             material_type = material.get('type', 'material')
             logger.info(f"Тип материала (до авто-детекта): {material_type}")
 
+            # Считываем прогресс/уже просмотренное время (для пропуска повторного просмотра)
+            try:
+                self.driver.switch_to.default_content()
+            except Exception:
+                pass
+            viewed_seconds = self._get_item_total_time_seconds()
+            progress_percent = self._get_progress_percent()
+            if viewed_seconds is not None:
+                logger.info(f"Уже просмотрено (itemTotalTime): {viewed_seconds} сек")
+            if progress_percent is not None:
+                logger.info(f"Прогресс материала: {progress_percent}%")
+
+            # Если уже 100% — не пересматриваем, просто подтверждаем
+            if progress_percent is not None and progress_percent >= 100:
+                results['processed'] = True
+                logger.info("Материал уже 100% (по прогрессу) — пропускаем повторный просмотр")
+
             # Если материал не распознан как video по URL/названию, но на странице есть видеоплеер,
             # переключаемся на обработку видео (актуально для /lntools/mcresource/view/...).
-            if material_type not in ['video', 'pdf', 'test', 'blocked']:
+            if not results.get('processed') and material_type not in ['video', 'pdf', 'test', 'blocked']:
                 try:
                     has_video = self._page_contains_video()
                     logger.info(f"Авто-детект видео на странице: {has_video}")
@@ -148,7 +165,7 @@ class MaterialProcessor:
             logger.info(f"Тип материала (после авто-детекта): {material_type}")
             
             # Обработка видео
-            if material_type == 'video':
+            if not results.get('processed') and material_type == 'video':
                 # #region agent log
                 self._debug_log("material_processor.py:108", "Начинаем обработку видео", {
                     "material_name": material.get('name', 'unknown'),
@@ -156,7 +173,7 @@ class MaterialProcessor:
                     "material_type": material_type
                 }, "A")
                 # #endregion
-                video_result = self._process_video(material)
+                video_result = self._process_video(material, viewed_seconds=viewed_seconds, progress_percent=progress_percent)
                 # #region agent log
                 self._debug_log("material_processor.py:111", "Результат обработки видео", {
                     "video_result": video_result,
@@ -333,6 +350,223 @@ class MaterialProcessor:
         except Exception as e:
             logger.error(f"Ошибка при обработке видео: {e}")
             return False
+
+    def _process_video(self, material: Dict, viewed_seconds: Optional[int] = None, progress_percent: Optional[int] = None) -> bool:
+        """Обработка видео материала (с учетом уже просмотренного времени)"""
+        try:
+            logger.info(f"Обрабатываем видео: {material['name']}")
+
+            # Если прогресс уже 100% — пересмотр не нужен
+            if progress_percent is not None and progress_percent >= 100:
+                logger.info("Видео уже завершено (прогресс 100%) — пропускаем просмотр")
+                return True
+
+            # Если можем заранее получить длительность и видим, что уже просмотрено достаточно — пропускаем
+            try:
+                duration_guess = self._probe_video_duration_seconds()
+                if duration_guess and viewed_seconds is not None:
+                    # допуск 5 секунд
+                    if viewed_seconds >= max(0, duration_guess - 5):
+                        logger.info(
+                            f"Видео уже просмотрено достаточно: viewed={viewed_seconds}s >= duration={duration_guess}s — пропускаем"
+                        )
+                        return True
+            except Exception as e_probe:
+                logger.debug(f"Не удалось заранее определить длительность видео: {e_probe}")
+
+            # Сначала ищем видео в iframes (видео обычно в iframe)
+            video_processed = False
+            try:
+                iframes = self.driver.find_elements(By.TAG_NAME, 'iframe')
+                if iframes:
+                    logger.info(f"Найдено {len(iframes)} iframe. Проверяем их на наличие видео...")
+                    for index in range(len(iframes)):
+                        try:
+                            logger.info(f"Переключаемся на iframe #{index}...")
+                            iframe = iframes[index]
+                            iframe_src = iframe.get_attribute('src') or ''
+                            logger.info(f"Iframe #{index} src: {iframe_src[:100] if iframe_src else 'empty'}")
+
+                            self.driver.switch_to.frame(index)
+                            time.sleep(2)
+
+                            # Пробуем найти видео в этом iframe
+                            self._debug_log("material_processor.py:175", "Поиск видео в iframe", {
+                                "iframe_index": index,
+                                "iframe_src": iframe_src[:100] if iframe_src else "empty"
+                            }, "E")
+
+                            video_processed = self._find_and_start_video(material)
+
+                            if video_processed:
+                                logger.info(f"Видео найдено и обработано в iframe #{index}")
+                                self._debug_log("material_processor.py:178", "Видео обработано в iframe", {
+                                    "iframe_index": index,
+                                    "success": True
+                                }, "E")
+                                break
+
+                            # Вложенные iframe
+                            nested_iframes = self.driver.find_elements(By.TAG_NAME, 'iframe')
+                            if nested_iframes:
+                                logger.info(f"В iframe #{index} найдено {len(nested_iframes)} вложенных iframe - проверяем их")
+                                for nested_index in range(len(nested_iframes)):
+                                    try:
+                                        logger.info(f"Переключаемся на вложенный iframe #{nested_index}...")
+                                        nested_iframe = nested_iframes[nested_index]
+                                        nested_src = nested_iframe.get_attribute('src') or ''
+                                        logger.info(f"Вложенный iframe #{nested_index} src: {nested_src[:100] if nested_src else 'empty'}")
+
+                                        self.driver.switch_to.frame(nested_index)
+                                        time.sleep(3)
+
+                                        video_processed = self._find_and_start_video(material)
+                                        if video_processed:
+                                            logger.info(f"✓ Видео найдено и обработано во вложенном iframe #{nested_index}")
+                                            break
+                                    except Exception as e_nested:
+                                        logger.error(f"Ошибка при обработке вложенного iframe #{nested_index}: {e_nested}")
+                                    finally:
+                                        try:
+                                            self.driver.switch_to.parent_frame()
+                                        except Exception:
+                                            pass
+
+                            if video_processed:
+                                break
+                        except Exception as e_frame:
+                            logger.warning(f"Ошибка при обработке iframe #{index}: {e_frame}")
+                        finally:
+                            try:
+                                self.driver.switch_to.default_content()
+                            except Exception:
+                                pass
+            except Exception as e:
+                logger.error(f"Ошибка при поиске iframes: {e}")
+            finally:
+                try:
+                    self.driver.switch_to.default_content()
+                except Exception:
+                    pass
+
+            # Если не нашли в iframe, ищем на основной странице
+            if not video_processed:
+                logger.info("Ищем видео на основной странице...")
+                self._debug_log("material_processor.py:220", "Поиск видео на основной странице", {
+                    "reason": "не найдено в iframe"
+                }, "E")
+                video_processed = self._find_and_start_video(material)
+
+            if video_processed:
+                logger.info(f"Просмотр видео '{material['name']}' завершен.")
+                return True
+
+            logger.warning("Видео для просмотра не найдено.")
+            return False
+        except Exception as e:
+            logger.error(f"Ошибка при обработке видео: {e}")
+            return False
+
+    def _get_item_total_time_seconds(self) -> Optional[int]:
+        """Считывает время просмотра из #itemTotalTime (формат HH:MM:SS или MM:SS)."""
+        try:
+            el = self.driver.find_element(By.ID, "itemTotalTime")
+            raw = (el.text or "").strip()
+            if not raw:
+                raw = (self.driver.execute_script(
+                    "return arguments[0].textContent || arguments[0].innerText || '';",
+                    el
+                ) or "").strip()
+            if not raw:
+                return None
+            return self._parse_time_to_seconds(raw)
+        except Exception:
+            return None
+
+    def _get_progress_percent(self) -> Optional[int]:
+        """Считывает прогресс из блока .courseEducationProgress .interest strong (например '100%')."""
+        selectors = [
+            ".courseEducationProgress .interest strong",
+            ".interest strong",
+        ]
+        for sel in selectors:
+            try:
+                el = self.driver.find_element(By.CSS_SELECTOR, sel)
+                txt = (el.text or "").strip()
+                if not txt:
+                    txt = (self.driver.execute_script(
+                        "return arguments[0].textContent || arguments[0].innerText || '';",
+                        el
+                    ) or "").strip()
+                if not txt:
+                    continue
+                txt = txt.replace('%', '').strip()
+                if txt.isdigit():
+                    return int(txt)
+            except Exception:
+                continue
+        return None
+
+    def _parse_time_to_seconds(self, s: str) -> int:
+        """Парсит 'HH:MM:SS' / 'MM:SS' / 'SS' в секунды."""
+        parts = [p.strip() for p in s.strip().split(':') if p.strip()]
+        if not parts:
+            return 0
+        try:
+            nums = [int(p) for p in parts]
+        except Exception:
+            return 0
+        if len(nums) == 3:
+            return nums[0] * 3600 + nums[1] * 60 + nums[2]
+        if len(nums) == 2:
+            return nums[0] * 60 + nums[1]
+        return nums[0]
+
+    def _probe_video_duration_seconds(self) -> Optional[int]:
+        """
+        Пытается быстро получить длительность видео из <video>.duration без запуска просмотра.
+        Возвращает первую валидную длительность (секунды).
+        """
+        # 1) На текущем уровне
+        try:
+            videos = self.driver.find_elements(By.TAG_NAME, "video")
+            for v in videos:
+                try:
+                    dur = self.driver.execute_script("return arguments[0].duration;", v)
+                    if dur and dur > 0 and dur != float("inf"):
+                        return int(dur)
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        # 2) В iframe (если есть доступ)
+        try:
+            iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
+            for idx in range(len(iframes)):
+                try:
+                    self.driver.switch_to.default_content()
+                    self.driver.switch_to.frame(idx)
+                    time.sleep(0.2)
+                    videos = self.driver.find_elements(By.TAG_NAME, "video")
+                    for v in videos:
+                        try:
+                            dur = self.driver.execute_script("return arguments[0].duration;", v)
+                            if dur and dur > 0 and dur != float("inf"):
+                                return int(dur)
+                        except Exception:
+                            continue
+                except Exception:
+                    continue
+                finally:
+                    try:
+                        self.driver.switch_to.default_content()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        return None
 
     def _page_contains_video(self) -> bool:
         """
@@ -1116,6 +1350,20 @@ class MaterialProcessor:
     def confirm_material_study(self) -> bool:
         """Подтверждение изучения материала"""
         try:
+            # Новый (из HTML): #closeForMobile = "Подтвердить изучение материала"
+            try:
+                btn = WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located((By.ID, "closeForMobile"))
+                )
+                if btn and btn.is_displayed():
+                    logger.info("Подтверждаем изучение материала (через closeForMobile)...")
+                    self._robust_click(btn)
+                    time.sleep(1)
+                    logger.info("Материал подтвержден")
+                    return True
+            except Exception:
+                pass
+
             # Пробуем найти кнопку по XPath
             confirm_button = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, '/html/body/div[4]/div/div[2]/div/dl/dd[1]/div[1]/a'))
