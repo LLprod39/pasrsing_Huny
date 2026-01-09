@@ -1,0 +1,26 @@
+# Скопируйте этот файл в .env и заполните своими данными
+
+# Данные для авторизации на LMS Synergy
+LOGIN=your_email@example.com
+PASSWORD=your_password
+
+# Данные для Gologin
+# Если используете Gologin API
+GOLOGIN_API_TOKEN=your_gologin_api_token
+GOLOGIN_PROFILE_ID=your_profile_id
+
+# Если используете локальный профиль Gologin
+# GOLOGIN_PROFILE_PATH=C:\path\to\gologin\profile
+
+# Настройки парсера
+MIN_VIEW_TIME=30
+SCROLL_DELAY=2
+PAGE_LOAD_TIMEOUT=30
+
+# Настройки для тестов
+TEST_STRATEGY=random
+MAX_TEST_ATTEMPTS=3
+
+# Логирование
+LOG_LEVEL=INFO
+LOG_FILE=parser.log
