@@ -173,6 +173,11 @@ class CourseParser:
         """Определение типа материала"""
         name_lower = name.lower()
         url_lower = url.lower()
+
+        # Synergy LMS: видео-материалы часто открываются по /learning/view/<id>
+        # (при этом в URL нет слова "video", а в названии может не быть "видео/лекция/урок")
+        if '/learning/view/' in url_lower:
+            return 'video'
         
         if any(keyword in name_lower for keyword in ['тест', 'test', 'аттестация', 'экзамен']):
             return 'test'

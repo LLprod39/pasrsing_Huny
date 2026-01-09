@@ -1,5 +1,6 @@
 """Модуль для обработки материалов (видео, PDF) с подтверждением"""
 import time
+import json
 from typing import Dict, Optional
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -12,6 +13,10 @@ from logger import setup_logger
 
 logger = setup_logger(__name__)
 
+# #region agent log
+DEBUG_LOG_PATH = r"c:\testi\.cursor\debug.log"
+# #endregion
+
 
 class MaterialProcessor:
     """Класс для обработки материалов с подтверждением"""
@@ -19,6 +24,30 @@ class MaterialProcessor:
     def __init__(self, driver: webdriver.Chrome):
         self.driver = driver
         self.wait = WebDriverWait(driver, Config.PAGE_LOAD_TIMEOUT)
+    
+    def _debug_log(self, location: str, message: str, data: dict = None, hypothesis_id: str = None):
+        """Записывает отладочный лог в NDJSON формат"""
+        # #region agent log
+        try:
+            import os
+            log_dir = os.path.dirname(DEBUG_LOG_PATH)
+            if log_dir and not os.path.exists(log_dir):
+                os.makedirs(log_dir, exist_ok=True)
+            log_entry = {
+                "sessionId": "debug-session",
+                "runId": "run1",
+                "timestamp": int(time.time() * 1000),
+                "location": location,
+                "message": message,
+                "data": data or {},
+                "hypothesisId": hypothesis_id
+            }
+            with open(DEBUG_LOG_PATH, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(log_entry, ensure_ascii=False) + '\n')
+                f.flush()
+        except Exception as e:
+            logger.debug(f"Ошибка записи debug лога: {e}")
+        # #endregion
     
     def process_material(self, material: Dict) -> Dict:
         """Обработка отдельного учебного материала"""
@@ -102,13 +131,43 @@ class MaterialProcessor:
             time.sleep(3)
 
             material_type = material.get('type', 'material')
+            logger.info(f"Тип материала (до авто-детекта): {material_type}")
+
+            # Если материал не распознан как video по URL/названию, но на странице есть видеоплеер,
+            # переключаемся на обработку видео (актуально для /lntools/mcresource/view/...).
+            if material_type not in ['video', 'pdf', 'test', 'blocked']:
+                try:
+                    has_video = self._page_contains_video()
+                    logger.info(f"Авто-детект видео на странице: {has_video}")
+                    if has_video:
+                        logger.info("Обнаружен видеоплеер на странице — обрабатываем как видео")
+                        material_type = 'video'
+                except Exception as e_detect:
+                    logger.debug(f"Не удалось выполнить авто-детект видео: {e_detect}")
+
+            logger.info(f"Тип материала (после авто-детекта): {material_type}")
             
             # Обработка видео
             if material_type == 'video':
+                # #region agent log
+                self._debug_log("material_processor.py:108", "Начинаем обработку видео", {
+                    "material_name": material.get('name', 'unknown'),
+                    "material_url": material.get('url', 'unknown')[:100],
+                    "material_type": material_type
+                }, "A")
+                # #endregion
                 video_result = self._process_video(material)
+                # #region agent log
+                self._debug_log("material_processor.py:111", "Результат обработки видео", {
+                    "video_result": video_result,
+                    "material_name": material.get('name', 'unknown')
+                }, "A")
+                # #endregion
                 if video_result:
                     results['videos'] += 1
                     results['processed'] = True
+                else:
+                    results['error'] = "Видео не найдено/не удалось запустить для просмотра"
             
             # Обработка PDF
             elif material_type == 'pdf':
@@ -116,15 +175,21 @@ class MaterialProcessor:
                 if pdf_result:
                     results['pdfs'] += 1
                     results['processed'] = True
+                else:
+                    results['error'] = "Не удалось обработать PDF материал"
             
             # Для других типов материалов просто подтверждаем просмотр
             else:
                 time.sleep(Config.MIN_VIEW_TIME)
                 results['processed'] = True
 
-            # Подтверждение изучения (выполняется в самом конце)
-            self.driver.switch_to.default_content()
-            self.confirm_material_study()
+            # Подтверждение изучения — только если реально обработали материал
+            # (иначе мы "закрываем" видео, даже если Play не нажался/видео не найдено)
+            if results.get('processed') and not results.get('error'):
+                self.driver.switch_to.default_content()
+                self.confirm_material_study()
+            else:
+                logger.warning("Пропускаем подтверждение материала: обработка не завершена успешно")
             
             return results
             
@@ -167,10 +232,22 @@ class MaterialProcessor:
                                 logger.warning(f"Не удалось получить доступ к содержимому iframe #{index}")
                             
                             # Пробуем найти видео в этом iframe
+                            # #region agent log
+                            self._debug_log("material_processor.py:175", "Поиск видео в iframe", {
+                                "iframe_index": index,
+                                "iframe_src": iframe_src[:100] if iframe_src else "empty"
+                            }, "E")
+                            # #endregion
                             video_processed = self._find_and_start_video(material)
                             
                             if video_processed:
                                 logger.info(f"Видео найдено и обработано в iframe #{index}")
+                                # #region agent log
+                                self._debug_log("material_processor.py:178", "Видео обработано в iframe", {
+                                    "iframe_index": index,
+                                    "success": True
+                                }, "E")
+                                # #endregion
                                 break
                             
                             # Если в этом iframe есть еще iframe, проверяем их (ВЛОЖЕННЫЕ IFRAME!)
@@ -180,8 +257,31 @@ class MaterialProcessor:
                                 for nested_index in range(len(nested_iframes)):
                                     try:
                                         logger.info(f"Переключаемся на вложенный iframe #{nested_index}...")
+                                        nested_iframe = nested_iframes[nested_index]
+                                        nested_src = nested_iframe.get_attribute('src') or ''
+                                        logger.info(f"Вложенный iframe #{nested_index} src: {nested_src[:100] if nested_src else 'empty'}")
+                                        
                                         self.driver.switch_to.frame(nested_index)
-                                        time.sleep(2)  # Даем время на загрузку вложенного iframe
+                                        time.sleep(3)  # Даем больше времени на загрузку вложенного iframe
+                                        
+                                        # Проверяем что мы во вложенном iframe и ищем кнопку Play
+                                        try:
+                                            test_body = self.driver.find_elements(By.TAG_NAME, "body")
+                                            logger.info(f"Во вложенном iframe #{nested_index} найдено body элементов: {len(test_body)}")
+                                            
+                                            # Ищем кнопку Play сразу во вложенном iframe для отладки
+                                            play_buttons = self.driver.find_elements(By.CSS_SELECTOR, ".vjs-big-play-button")
+                                            logger.info(f"Во вложенном iframe #{nested_index} найдено {len(play_buttons)} кнопок Play")
+                                            if play_buttons:
+                                                for pb_idx, pb in enumerate(play_buttons):
+                                                    try:
+                                                        pb_classes = pb.get_attribute('class') or ''
+                                                        pb_hidden = 'vjs-hidden' in pb_classes
+                                                        logger.info(f"  Кнопка Play #{pb_idx+1}: hidden={pb_hidden}, classes={pb_classes[:50]}")
+                                                    except:
+                                                        pass
+                                        except Exception as e_check:
+                                            logger.warning(f"Не удалось проверить содержимое вложенного iframe #{nested_index}: {e_check}")
                                         
                                         # Ищем видео во вложенном iframe
                                         video_processed = self._find_and_start_video(material)
@@ -190,11 +290,14 @@ class MaterialProcessor:
                                             logger.info(f"✓ Видео найдено и обработано во вложенном iframe #{nested_index}")
                                             break
                                     except Exception as e_nested:
-                                        logger.warning(f"Ошибка при обработке вложенного iframe #{nested_index}: {e_nested}")
+                                        logger.error(f"Ошибка при обработке вложенного iframe #{nested_index}: {e_nested}")
+                                        import traceback
+                                        logger.error(traceback.format_exc())
                                     finally:
                                         # Возвращаемся к родительскому iframe
                                         try:
                                             self.driver.switch_to.parent_frame()
+                                            logger.info(f"Вернулись к родительскому iframe #{index}")
                                         except:
                                             pass
                             
@@ -213,6 +316,11 @@ class MaterialProcessor:
             # Если не нашли в iframe, ищем на основной странице
             if not video_processed:
                 logger.info("Ищем видео на основной странице...")
+                # #region agent log
+                self._debug_log("material_processor.py:220", "Поиск видео на основной странице", {
+                    "reason": "не найдено в iframe"
+                }, "E")
+                # #endregion
                 video_processed = self._find_and_start_video(material)
             
             if video_processed:
@@ -220,13 +328,162 @@ class MaterialProcessor:
                 return True
             else:
                 logger.warning("Видео для просмотра не найдено.")
-                # Даже если видео не найдено, ждем минимальное время
-                time.sleep(Config.MIN_VIEW_TIME)
-                return True
+                return False
                 
         except Exception as e:
             logger.error(f"Ошибка при обработке видео: {e}")
             return False
+
+    def _page_contains_video(self) -> bool:
+        """
+        Быстрый детект наличия видео на текущей странице.
+        Нужен для случаев, когда материал не помечен как video, но фактически содержит плеер.
+        """
+        # В текущем DOM
+        try:
+            if self.driver.find_elements(By.CSS_SELECTOR, "div.video-js, video, .vjs-big-play-button"):
+                return True
+        except Exception:
+            pass
+
+        # Проверяем iframe: сначала по src, затем (если возможно) заходим внутрь и ищем элементы плеера.
+        try:
+            iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
+            for fr in iframes:
+                src = (fr.get_attribute("src") or "").lower()
+                if not src:
+                    src = ""
+                if any(token in src for token in [
+                    "video", "player", "kinescope", "youtube", "rutube", "vk.com/video",
+                    "/learning/view/", "/lntools/"
+                ]):
+                    return True
+
+            # Глубокая проверка: пробуем переключиться в iframe и найти элементы плеера
+            for idx in range(len(iframes)):
+                try:
+                    self.driver.switch_to.default_content()
+                    self.driver.switch_to.frame(idx)
+                    time.sleep(0.2)
+                    if self.driver.find_elements(By.CSS_SELECTOR, "div.video-js, video, .vjs-big-play-button"):
+                        return True
+                except Exception:
+                    # кросс-домен/нет доступа/пустой iframe — пропускаем
+                    continue
+                finally:
+                    try:
+                        self.driver.switch_to.default_content()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        return False
+
+    def _robust_click(self, element) -> bool:
+        """Надежный клик по элементу (scroll -> ActionChains -> JS click + dispatch событий)."""
+        try:
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({block:'center', inline:'center'});",
+                element
+            )
+            time.sleep(0.2)
+        except Exception:
+            pass
+
+        # 1) Обычный клик Selenium/ActionChains (иногда нужен именно user-gesture)
+        try:
+            ActionChains(self.driver).move_to_element(element).pause(0.05).click(element).perform()
+            return True
+        except Exception:
+            pass
+
+        # 2) JS click (обходит перехваты Selenium)
+        try:
+            self.driver.execute_script("arguments[0].click();", element)
+            return True
+        except Exception:
+            pass
+
+        # 3) Dispatch mouse/pointer событий (некоторые плееры слушают именно их)
+        try:
+            self.driver.execute_script(
+                """
+                const el = arguments[0];
+                const opts = {bubbles: true, cancelable: true, view: window};
+                ['pointerdown','mousedown','pointerup','mouseup','click'].forEach((t) => {
+                  try { el.dispatchEvent(new MouseEvent(t, opts)); } catch(e) {}
+                });
+                """,
+                element
+            )
+            return True
+        except Exception:
+            return False
+
+    def _force_start_video_playback(self) -> bool:
+        """
+        Если после клика Play видео осталось на паузе (autoplay/overlay),
+        пробуем принудительно стартануть через video.play() и VideoJS API.
+        """
+        # 1) HTML5 video.play() + muted (часто требуется в браузерах)
+        try:
+            video_elements = self.driver.find_elements(By.TAG_NAME, "video")
+            for video in video_elements:
+                try:
+                    self.driver.execute_script(
+                        """
+                        const v = arguments[0];
+                        try { v.muted = true; } catch(e) {}
+                        try { v.play(); } catch(e) {}
+                        """,
+                        video
+                    )
+                    time.sleep(0.5)
+                    is_playing = self.driver.execute_script("return arguments[0] && !arguments[0].paused;", video)
+                    if is_playing:
+                        return True
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        # 2) VideoJS API (если доступен)
+        try:
+            started = self.driver.execute_script(
+                """
+                try {
+                  if (!window.videojs) return false;
+                  const players = (window.videojs.players) ? Object.values(window.videojs.players) : [];
+                  let ok = false;
+                  players.forEach((p) => {
+                    try {
+                      if (p && typeof p.muted === 'function') p.muted(true);
+                      if (p && typeof p.play === 'function') p.play();
+                      ok = true;
+                    } catch(e) {}
+                  });
+                  return ok;
+                } catch(e) { return false; }
+                """
+            )
+            if started:
+                time.sleep(0.5)
+                # перепроверим по video.paused
+                try:
+                    vids = self.driver.find_elements(By.TAG_NAME, "video")
+                    for v in vids:
+                        try:
+                            if self.driver.execute_script("return arguments[0] && !arguments[0].paused;", v):
+                                return True
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        return False
     
     def _find_and_start_video(self, material: Dict) -> Optional[object]:
         """Находит видео, запускает его и ждет полного просмотра"""
@@ -234,38 +491,200 @@ class MaterialProcessor:
         INTRO_DURATION = 5  # Длительность заставки в секундах
         
         try:
+            # #region agent log
+            try:
+                current_url = self.driver.current_url
+                page_title = self.driver.title
+            except:
+                current_url = "unknown"
+                page_title = "unknown"
+            self._debug_log("material_processor.py:236", "Вход в _find_and_start_video", {
+                "material_name": material.get('name', 'unknown'),
+                "current_url": current_url[:100],
+                "page_title": page_title[:100]
+            }, "A")
+            # #endregion
+            
             # САМОЕ ВАЖНОЕ: Ищем и кликаем кнопку Play
             logger.info("Ищем кнопку Play...")
-            time.sleep(3)  # Даем время на полную загрузку
+            
+            # Проверяем текущий контекст
+            try:
+                current_url = self.driver.current_url
+                page_title = self.driver.title
+                logger.info(f"Текущий контекст: URL={current_url[:100]}, Title={page_title[:50]}")
+            except:
+                pass
+            
+            time.sleep(3)  # Даем время на загрузку
             
             play_button_clicked = False
+            play_button = None
             
-            # Пробуем найти кнопку Play - основной селектор
+            # Способ 1: По классу .vjs-big-play-button (САМЫЙ НАДЕЖНЫЙ из HTML!)
             try:
-                logger.info("Ищем кнопку .vjs-big-play-button...")
+                logger.info("Ищем кнопку Play по классу .vjs-big-play-button...")
                 play_button = WebDriverWait(self.driver, 15).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, ".vjs-big-play-button"))
                 )
+                logger.info("✓ Кнопка Play найдена по классу .vjs-big-play-button!")
+            except TimeoutException:
+                logger.warning("Кнопка .vjs-big-play-button не найдена, пробуем другие способы...")
+            
+            # Способ 2: XPath от пользователя
+            if not play_button:
+                try:
+                    logger.info("Ищем кнопку Play по XPath: /html/body/div[2]/div[1]/div/div/p/div/button")
+                    play_button = WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, "/html/body/div[2]/div[1]/div/div/p/div/button"))
+                    )
+                    logger.info("✓ Кнопка Play найдена по XPath!")
+                except TimeoutException:
+                    logger.warning("Кнопка Play не найдена по XPath")
+                    # Пробуем альтернативный XPath
+                    try:
+                        logger.info("Пробуем альтернативный XPath: //button[@class='vjs-big-play-button']")
+                        play_button = WebDriverWait(self.driver, 5).until(
+                            EC.presence_of_element_located((By.XPATH, "//button[@class='vjs-big-play-button']"))
+                        )
+                        logger.info("✓ Кнопка Play найдена по альтернативному XPath!")
+                    except TimeoutException:
+                        logger.warning("Альтернативный XPath тоже не сработал")
+            
+            # Способ 3: Ищем все кнопки с классом .vjs-big-play-button
+            if not play_button:
+                try:
+                    logger.info("Ищем все кнопки с классом .vjs-big-play-button...")
+                    all_play_buttons = self.driver.find_elements(By.CSS_SELECTOR, ".vjs-big-play-button")
+                    logger.info(f"Найдено {len(all_play_buttons)} элементов с классом .vjs-big-play-button")
+                    if all_play_buttons:
+                        # Берем первую видимую кнопку
+                        for btn in all_play_buttons:
+                            try:
+                                if btn.is_displayed() and 'vjs-hidden' not in (btn.get_attribute('class') or ''):
+                                    play_button = btn
+                                    logger.info("Используем первую видимую кнопку")
+                                    break
+                            except:
+                                continue
+                        if not play_button and all_play_buttons:
+                            play_button = all_play_buttons[0]
+                            logger.info("Используем первую найденную кнопку (даже если скрыта)")
+                except Exception as e:
+                    logger.warning(f"Ошибка при поиске всех кнопок: {e}")
+            
+            # Способ 3: Ищем по title "Play Video"
+            if not play_button:
+                try:
+                    logger.info("Ищем кнопку по title 'Play Video'...")
+                    play_button = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, "//button[@title='Play Video' or contains(@title, 'Play')]"))
+                    )
+                    logger.info("✓ Кнопка найдена по title!")
+                except TimeoutException:
+                    logger.warning("Кнопка по title не найдена")
+            
+            # Способ 4: Ищем button с текстом "Play Video"
+            if not play_button:
+                try:
+                    logger.info("Ищем кнопку по тексту 'Play Video'...")
+                    play_button = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Play Video') or contains(., 'Play Video')]"))
+                    )
+                    logger.info("✓ Кнопка найдена по тексту!")
+                except TimeoutException:
+                    logger.warning("Кнопка по тексту не найдена")
+            
+            if play_button:
                 
                 # Проверяем что кнопка не скрыта
                 classes = play_button.get_attribute('class') or ''
                 is_hidden = 'vjs-hidden' in classes
                 is_displayed = play_button.is_displayed()
+                tag_name = play_button.tag_name
+                text_content = play_button.text[:50] if play_button.text else ""
                 
                 logger.info(f"Кнопка Play найдена! hidden={is_hidden}, displayed={is_displayed}, classes={classes}")
+                # #region agent log
+                self._debug_log("material_processor.py:255", "Кнопка Play найдена", {
+                    "found": True,
+                    "is_hidden": is_hidden,
+                    "is_displayed": is_displayed,
+                    "classes": classes,
+                    "tag_name": tag_name,
+                    "text": text_content
+                }, "A")
+                # #endregion
                 
-                if not is_hidden:
-                    logger.info("Кликаем на кнопку Play через JavaScript...")
-                    # Используем JavaScript click - самый надежный способ
-                    self.driver.execute_script("arguments[0].click();", play_button)
-                    play_button_clicked = True
+                # Кликаем на кнопку Play (независимо от is_hidden, так как XPath точный)
+                logger.info("Кликаем на кнопку Play (robust click: scroll+actions+js)...")
+                # #region agent log
+                self._debug_log("material_processor.py:260", "Попытка клика по кнопке Play", {
+                    "method": "robust_click",
+                    "xpath": "/html/body/div[2]/div[1]/div/div/p/div/button"
+                }, "B")
+                # #endregion
+                play_button_clicked = self._robust_click(play_button)
+                if play_button_clicked:
                     logger.info("✓ Кнопка Play нажата!")
-                    time.sleep(3)  # Даем время на запуск видео
                 else:
+                    logger.warning("⚠️ Не удалось кликнуть по кнопке Play напрямую")
+                
+                # Ждем заставку (5 секунд) - как указал пользователь
+                logger.info(f"Ожидаем {INTRO_DURATION} секунд заставки...")
+                time.sleep(INTRO_DURATION)
+                logger.info("Заставка прошла, видео должно начаться")
+
+                # Если после клика видео не стартовало (paused), пробуем принудительный запуск
+                try:
+                    vids = self.driver.find_elements(By.TAG_NAME, "video")
+                    if vids:
+                        any_playing = False
+                        for v in vids:
+                            try:
+                                if self.driver.execute_script("return arguments[0] && !arguments[0].paused;", v):
+                                    any_playing = True
+                                    break
+                            except Exception:
+                                continue
+                        if not any_playing:
+                            logger.info("Видео после клика всё ещё на паузе — пробуем принудительный старт (muted play)")
+                            self._force_start_video_playback()
+                except Exception:
+                    pass
+                
+                # #region agent log
+                try:
+                    video_elements = self.driver.find_elements(By.TAG_NAME, "video")
+                    video_states = []
+                    for vid in video_elements:
+                        try:
+                            is_playing = self.driver.execute_script("return !arguments[0].paused;", vid)
+                            current_time = self.driver.execute_script("return arguments[0].currentTime;", vid)
+                            video_states.append({"is_playing": is_playing, "current_time": current_time})
+                        except:
+                            pass
+                    self._debug_log("material_processor.py:263", "Состояние видео после клика", {
+                        "play_button_clicked": play_button_clicked,
+                        "video_count": len(video_elements),
+                        "video_states": video_states
+                    }, "C")
+                except:
+                    self._debug_log("material_processor.py:263", "Состояние видео после клика", {
+                        "play_button_clicked": play_button_clicked,
+                        "error": "не удалось проверить состояние"
+                    }, "C")
+                # #endregion
+                
+                if is_hidden:
                     logger.warning("Кнопка Play скрыта (vjs-hidden)")
-                    
-            except TimeoutException:
-                logger.warning("Кнопка .vjs-big-play-button не найдена за 15 секунд")
+                    # #region agent log
+                    self._debug_log("material_processor.py:265", "Кнопка Play скрыта", {
+                        "reason": "vjs-hidden в классах"
+                    }, "A")
+                    # #endregion
+            else:
+                logger.warning("Кнопка Play не найдена ни одним из способов")
             
             # Если кнопка не найдена, пробуем другие селекторы
             if not play_button_clicked:
@@ -290,17 +709,44 @@ class MaterialProcessor:
                         continue
             
             if not play_button_clicked:
-                logger.warning("Кнопка Play не найдена, пробуем запустить видео напрямую через video.play()")
+                logger.warning("Кнопка Play не найдена или не нажата, пробуем запустить видео напрямую через video.play()")
+                # Выводим отладочную информацию
+                try:
+                    all_buttons = self.driver.find_elements(By.TAG_NAME, "button")
+                    logger.info(f"Найдено {len(all_buttons)} кнопок на странице")
+                    for i, btn in enumerate(all_buttons[:10]):  # Показываем первые 10
+                        try:
+                            btn_text = btn.text[:30] if btn.text else ""
+                            btn_title = btn.get_attribute('title') or ""
+                            btn_class = btn.get_attribute('class') or ""
+                            logger.info(f"  Кнопка #{i+1}: text='{btn_text}', title='{btn_title}', class='{btn_class[:50]}'")
+                        except:
+                            pass
+                except:
+                    pass
             
             # Ищем видео элементы
             video_players = self.driver.find_elements(By.CSS_SELECTOR, "div.video-js")
             video_elements = self.driver.find_elements(By.TAG_NAME, "video")
             
             logger.info(f"Найдено {len(video_players)} видеоплееров и {len(video_elements)} video элементов.")
+            # #region agent log
+            self._debug_log("material_processor.py:299", "Поиск видео элементов", {
+                "video_players_count": len(video_players),
+                "video_elements_count": len(video_elements),
+                "play_button_clicked": play_button_clicked
+            }, "A")
+            # #endregion
             
             # Если кнопка не была нажата, пробуем запустить видео напрямую
             if not play_button_clicked and video_elements:
                 logger.info("Кнопка Play не была нажата, пробуем запустить видео напрямую через video.play()...")
+                # #region agent log
+                self._debug_log("material_processor.py:303", "Попытка запуска видео через video.play()", {
+                    "reason": "кнопка Play не была нажата",
+                    "video_elements_count": len(video_elements)
+                }, "C")
+                # #endregion
                 for video_element in video_elements:
                     try:
                         video_id = video_element.get_attribute('id') or 'unknown'
@@ -312,6 +758,13 @@ class MaterialProcessor:
                         
                         # Проверяем что видео запустилось
                         is_playing = self.driver.execute_script("return !arguments[0].paused;", video_element)
+                        # #region agent log
+                        self._debug_log("material_processor.py:315", "Результат video.play()", {
+                            "video_id": video_id,
+                            "is_playing": is_playing,
+                            "method": "video.play()"
+                        }, "C")
+                        # #endregion
                         if is_playing:
                             logger.info("Видео запущено через video.play()")
                             play_button_clicked = True
@@ -320,6 +773,11 @@ class MaterialProcessor:
                             logger.warning("video.play() вызван, но видео не запустилось")
                     except Exception as e:
                         logger.warning(f"Ошибка при запуске video элемента: {e}")
+                        # #region agent log
+                        self._debug_log("material_processor.py:322", "Ошибка при video.play()", {
+                            "error": str(e)[:200]
+                        }, "C")
+                        # #endregion
             
             # Если есть только video элементы без плеера, обрабатываем их
             if not video_players and video_elements and play_button_clicked:
@@ -331,7 +789,9 @@ class MaterialProcessor:
                         if duration and duration > 0:
                             duration_in_seconds = int(duration)
                             logger.info(f"Длительность видео: {duration_in_seconds} секунд")
-                            time.sleep(INTRO_DURATION + duration_in_seconds)
+                            # Заставка уже прошла после клика на Play, ждем только длительность
+                            logger.info(f"Ожидаем просмотр видео: {duration_in_seconds} секунд (заставка уже прошла)")
+                            time.sleep(duration_in_seconds)
                             logger.info(f"Просмотр видео '{material['name']}' завершен.")
                             return True
                     except Exception as e:
@@ -461,15 +921,49 @@ class MaterialProcessor:
                     
                     if not play_clicked:
                         logger.warning("Не удалось запустить видео автоматически, возможно требуется взаимодействие пользователя")
+                        # #region agent log
+                        self._debug_log("material_processor.py:463", "Не удалось запустить видео", {
+                            "player_id": player_id,
+                            "all_methods_failed": True
+                        }, "D")
+                        # #endregion
                     
                     # Ждем когда видео начнет играть (появится класс vjs-playing)
                     try:
+                        # #region agent log
+                        self._debug_log("material_processor.py:467", "Ожидание класса vjs-playing", {
+                            "player_id": player_id,
+                            "timeout": 10
+                        }, "C")
+                        # #endregion
                         WebDriverWait(self.driver, 10).until(
                             lambda d: 'vjs-playing' in player.get_attribute('class')
                         )
                         logger.info("Видео запущено и воспроизводится")
+                        # #region agent log
+                        self._debug_log("material_processor.py:470", "Видео воспроизводится", {
+                            "player_id": player_id,
+                            "status": "playing"
+                        }, "C")
+                        # #endregion
                     except TimeoutException:
                         logger.warning("Видео не начало воспроизводиться, продолжаем...")
+                        # #region agent log
+                        try:
+                            player_class = player.get_attribute('class') or ''
+                            is_playing_check = self.driver.execute_script("return !arguments[0].paused;", video_element)
+                            self._debug_log("material_processor.py:472", "Видео не начало воспроизводиться", {
+                                "player_id": player_id,
+                                "player_class": player_class,
+                                "video_paused": not is_playing_check,
+                                "timeout": True
+                            }, "C")
+                        except:
+                            self._debug_log("material_processor.py:472", "Видео не начало воспроизводиться", {
+                                "player_id": player_id,
+                                "timeout": True
+                            }, "C")
+                        # #endregion
                     
                     # Ждем загрузки реального URL видео (если был placeholder)
                     if PLACEHOLDER_VIDEO_SRC in initial_src:
@@ -558,12 +1052,11 @@ class MaterialProcessor:
                         logger.warning("Не удалось получить длительность видео, используем минимальное время")
                         duration_in_seconds = Config.MIN_VIEW_TIME
                     
-                    # Ждем просмотр: 5 секунд заставка + длительность видео
-                    total_wait_time = INTRO_DURATION + duration_in_seconds
-                    logger.info(f"Ожидаем просмотр видео: {INTRO_DURATION} сек заставка + {duration_in_seconds} сек видео = {total_wait_time} сек")
+                    # Ждем просмотр видео (заставка уже прошла после клика на Play, ждем только длительность)
+                    logger.info(f"Ожидаем просмотр видео: {duration_in_seconds} секунд (заставка уже прошла)")
                     
-                    # Ждем полное время просмотра
-                    time.sleep(total_wait_time)
+                    # Ждем длительность видео
+                    time.sleep(duration_in_seconds)
                     
                     logger.info(f"Просмотр видео '{material['name']}' завершен.")
                     return True
@@ -575,6 +1068,12 @@ class MaterialProcessor:
             return None
         except Exception as e:
             logger.error(f"Общая ошибка при поиске видео: {e}")
+            # #region agent log
+            self._debug_log("material_processor.py:577", "Ошибка в _find_and_start_video", {
+                "error": str(e)[:200],
+                "material_name": material.get('name', 'unknown')
+            }, "A")
+            # #endregion
             return None
     
     def _process_pdf(self, material: Dict) -> bool:
