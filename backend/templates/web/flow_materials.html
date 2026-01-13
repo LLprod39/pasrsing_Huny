@@ -59,6 +59,38 @@
         </form>
 
         <hr/>
+        <h6>Открыто/закрыто</h6>
+        <div class="table-responsive mb-3">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Статус</th>
+                <th>Раздел</th>
+                <th>Тип</th>
+                <th>Название</th>
+                <th>Причина</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in materials %}
+                <tr>
+                  <td style="width:120px;">
+                    {% if m.is_blocked %}
+                      <span class="badge bg-secondary">Закрыто</span>
+                    {% else %}
+                      <span class="badge bg-success">Открыто</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-muted">{{ m.section_path }}</td>
+                  <td><code>{{ m.type }}</code></td>
+                  <td>{{ m.name }}</td>
+                  <td class="text-muted">{{ m.blocked_reason }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
         <h6>Справка по типам</h6>
         <ul class="text-muted mb-0">
           <li><strong>video/material/pdf</strong> — будет поставлена задача <code>process_material</code></li>

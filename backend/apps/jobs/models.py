@@ -18,6 +18,7 @@ class JobType(models.TextChoices):
     SYNC_SEMESTERS = "sync_semesters", "Sync semesters"
     SYNC_COURSES = "sync_courses", "Sync courses"
     SYNC_MATERIALS = "sync_materials", "Sync materials"
+    SYNC_FULL = "sync_full", "Sync full (semesters/courses/materials)"
     PROCESS_MATERIAL = "process_material", "Process material"
     SOLVE_TEST = "solve_test", "Solve test"
 

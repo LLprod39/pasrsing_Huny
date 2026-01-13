@@ -86,7 +86,10 @@ class Material(models.Model):
     url = models.URLField(max_length=2000, null=True, blank=True)
     type = models.CharField(max_length=64, blank=True, default="material")
     is_blocked = models.BooleanField(default=False)
+    blocked_reason = models.CharField(max_length=500, blank=True, default="")
+    section_path = models.CharField(max_length=1000, blank=True, default="")
     data_index = models.CharField(max_length=128, blank=True, default="")
+    raw = models.JSONField(null=True, blank=True)
 
     last_processed_at = models.DateTimeField(null=True, blank=True)
     last_result = models.JSONField(null=True, blank=True)

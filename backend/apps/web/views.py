@@ -306,6 +306,22 @@ def flow_semesters(request: HttpRequest) -> HttpResponse:
             messages.error(request, f"Не удалось запустить задачу. Откройте Jobs и посмотрите ошибку для job {job.id}.")
         return redirect("web:flow_semesters")
 
+    # sync full button (semesters -> courses -> materials)
+    if request.method == "POST" and request.POST.get("action") == "sync_full":
+        job = Job.objects.create(
+            student=student,
+            type=JobType.SYNC_FULL,
+            status=JobStatus.PENDING,
+            params={"allowed_semesters": allowed},
+            result=None,
+        )
+        ok = enqueue_job(job)
+        if ok:
+            messages.success(request, "Полная синхронизация запущена (семестры/курсы/материалы). Это может занять время.")
+        else:
+            messages.error(request, f"Не удалось запустить. Откройте Jobs и посмотрите ошибку для job {job.id}.")
+        return redirect("web:jobs")
+
     semesters_qs = Semester.objects.filter(student=student).order_by("number")
     if allowed is not None:
         semesters_qs = semesters_qs.filter(number__in=allowed)

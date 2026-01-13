@@ -75,7 +75,7 @@ class StudentAdmin(ModelAdmin):
     list_filter = ("is_active",)
     list_filter_submit = True
     search_fields = ("full_name", "email", "phone", "external_id")
-    actions = ("queue_synergy_login", "queue_sync_semesters")
+    actions = ("queue_synergy_login", "queue_sync_semesters", "queue_sync_full")
     inlines = (SynergyCredentialInline, SubscriptionInline, PaymentInline, JobInline)
 
     readonly_fields = ("created_at", "updated_at")
@@ -129,4 +129,15 @@ class StudentAdmin(ModelAdmin):
             if enqueue_job(job):
                 created += 1
         self.message_user(request, f"Queued {created} sync_semesters job(s). (Check Jobs for errors if broker is down)")
+
+    @admin.action(description="Synergy: синхронизировать ВСЁ (семестры/курсы/занятия)")
+    def queue_sync_full(self, request, queryset):
+        created = 0
+        for student in queryset:
+            job = Job.objects.create(
+                student=student, type=JobType.SYNC_FULL, status=JobStatus.PENDING, params=None, result=None
+            )
+            if enqueue_job(job):
+                created += 1
+        self.message_user(request, f"Queued {created} sync_full job(s). (This may take a while)")
 

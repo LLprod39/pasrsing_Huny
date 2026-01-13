@@ -174,6 +174,34 @@ def _iter_leaf_materials(structured: list[dict]) -> list[dict]:
     return out
 
 
+def _iter_material_leaves_with_path(structured: list[dict]) -> list[dict]:
+    """Flatten materials tree with section path and blocked reason."""
+    out: list[dict] = []
+
+    def walk(items: list[dict], path: list[str]) -> None:
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            # Section node
+            if "materials" in item:
+                title = (item.get("title") or "").strip()
+                next_path = path + ([title] if title else [])
+                walk(item.get("materials") or [], next_path)
+                continue
+            # Leaf node
+            if "name" in item:
+                out.append(
+                    {
+                        **item,
+                        "section_path": " / ".join([p for p in path if p]),
+                        "blocked_reason": (item.get("reason") or "").strip(),
+                    }
+                )
+
+    walk(structured, [])
+    return out
+
+
 @shared_task(bind=True, autoretry_for=(), retry_backoff=False)
 def synergy_sync_materials_job(self, job_id: str) -> dict:
     """Login and sync materials for a given course_id (provided in job.params)."""
@@ -205,7 +233,7 @@ def synergy_sync_materials_job(self, job_id: str) -> dict:
             set_progress(job, progress=60, message="Fetching materials...")
             structured, _flat = client.get_course_materials(course.url)
 
-        leaf = _iter_leaf_materials(structured)
+        leaf = _iter_material_leaves_with_path(structured)
         set_progress(job, progress=85, message="Saving materials...")
 
         saved = 0
@@ -215,6 +243,8 @@ def synergy_sync_materials_job(self, job_id: str) -> dict:
             mat_type = (m.get("type") or "material").strip()
             is_blocked = bool(m.get("is_blocked"))
             data_index = (m.get("data_index") or "").strip()
+            section_path = (m.get("section_path") or "").strip()
+            blocked_reason = (m.get("blocked_reason") or "").strip()
 
             if url:
                 Material.objects.update_or_create(
@@ -226,6 +256,9 @@ def synergy_sync_materials_job(self, job_id: str) -> dict:
                         "type": mat_type,
                         "is_blocked": is_blocked,
                         "data_index": data_index,
+                        "section_path": section_path,
+                        "blocked_reason": blocked_reason,
+                        "raw": m,
                     },
                 )
             else:
@@ -238,6 +271,9 @@ def synergy_sync_materials_job(self, job_id: str) -> dict:
                         "url": None,
                         "type": mat_type,
                         "is_blocked": True,
+                        "section_path": section_path,
+                        "blocked_reason": blocked_reason or "Blocked",
+                        "raw": m,
                     },
                 )
             saved += 1
@@ -247,6 +283,134 @@ def synergy_sync_materials_job(self, job_id: str) -> dict:
         return {"status": JobStatus.COMPLETED, "job_id": str(job.id), "count": saved}
     except SynergyLoginError as e:
         mark_failed(job, error=str(e), message="Synergy login failed")
+        return {"status": JobStatus.FAILED, "job_id": str(job.id), "error": str(e)}
+
+
+@shared_task(bind=True, autoretry_for=(), retry_backoff=False)
+def synergy_sync_full_job(self, job_id: str) -> dict:
+    """One-shot sync: semesters -> courses -> materials.
+
+    Optional:
+      job.params.allowed_semesters: list[int] | null
+    """
+    with transaction.atomic():
+        job = _get_job_for_update(job_id)
+        if job.status in {JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED}:
+            return {"status": job.status, "job_id": str(job.id)}
+        if job.type != JobType.SYNC_FULL:
+            mark_failed(job, error=f"Job type mismatch: expected {JobType.SYNC_FULL}, got {job.type}")
+            return {"status": job.status, "job_id": str(job.id)}
+        mark_running(job, celery_task_id=self.request.id, message="Syncing everything...")
+
+    try:
+        allowed = (job.params or {}).get("allowed_semesters")
+        if allowed is not None:
+            allowed = [int(x) for x in allowed]
+
+        login, password = _get_student_credentials(job.student_id)
+        if not login or not password:
+            raise ValueError("Student Synergy credentials are missing (login/password)")
+
+        set_progress(job, progress=5, message="Starting browser...")
+        with SeleniumSynergyClient(use_gologin=False) as client:
+            set_progress(job, progress=10, message="Authorizing...")
+            client.login(login=login, password=password)
+
+            set_progress(job, progress=20, message="Fetching semesters...")
+            semesters = client.get_semesters()
+            if allowed is not None:
+                semesters = [s for s in semesters if s in allowed]
+
+            Semester.objects.bulk_create(
+                [Semester(student_id=job.student_id, number=n) for n in semesters],
+                ignore_conflicts=True,
+            )
+
+            total_courses = 0
+            total_materials = 0
+            for idx, sem in enumerate(semesters):
+                set_progress(job, progress=25 + int(25 * (idx / max(1, len(semesters)))), message=f"Courses: semester {sem}...")
+                courses = client.get_courses(sem)
+                saved_courses = []
+                for c in courses:
+                    url = (c.get("url") or "").strip()
+                    if not url:
+                        continue
+                    obj, _ = Course.objects.update_or_create(
+                        student_id=job.student_id,
+                        url=url,
+                        defaults={
+                            "semester_number": sem,
+                            "name": (c.get("name") or "").strip(),
+                            "control_type": (c.get("control_type") or "").strip(),
+                        },
+                    )
+                    saved_courses.append(obj)
+                total_courses += len(saved_courses)
+
+                for cidx, course in enumerate(saved_courses):
+                    set_progress(
+                        job,
+                        progress=50 + int(45 * ((idx + (cidx / max(1, len(saved_courses)))) / max(1, len(semesters)))),
+                        message=f"Materials: {course.name[:40]}...",
+                    )
+                    structured, _flat = client.get_course_materials(course.url)
+                    leaf = _iter_material_leaves_with_path(structured)
+
+                    for m in leaf:
+                        name = (m.get("name") or "").strip()
+                        url = (m.get("url") or "").strip() or None
+                        mat_type = (m.get("type") or "material").strip()
+                        is_blocked = bool(m.get("is_blocked"))
+                        data_index = (m.get("data_index") or "").strip()
+                        section_path = (m.get("section_path") or "").strip()
+                        blocked_reason = (m.get("blocked_reason") or "").strip()
+
+                        if url:
+                            Material.objects.update_or_create(
+                                student_id=job.student_id,
+                                course_id=course.id,
+                                url=url,
+                                defaults={
+                                    "name": name,
+                                    "type": mat_type,
+                                    "is_blocked": is_blocked,
+                                    "data_index": data_index,
+                                    "section_path": section_path,
+                                    "blocked_reason": blocked_reason,
+                                    "raw": m,
+                                },
+                            )
+                        else:
+                            Material.objects.update_or_create(
+                                student_id=job.student_id,
+                                course_id=course.id,
+                                name=name,
+                                data_index=data_index,
+                                defaults={
+                                    "url": None,
+                                    "type": mat_type,
+                                    "is_blocked": True,
+                                    "section_path": section_path,
+                                    "blocked_reason": blocked_reason or "Blocked",
+                                    "raw": m,
+                                },
+                            )
+                    total_materials += len(leaf)
+
+        now = timezone.now()
+        SynergyCredential.objects.filter(student_id=job.student_id).update(last_validated_at=now)
+        mark_completed(
+            job,
+            result={"semesters": semesters, "courses_count": total_courses, "materials_count": total_materials},
+            message="Full sync completed",
+        )
+        return {"status": JobStatus.COMPLETED, "job_id": str(job.id)}
+    except SynergyLoginError as e:
+        mark_failed(job, error=str(e), message="Synergy login failed")
+        return {"status": JobStatus.FAILED, "job_id": str(job.id), "error": str(e)}
+    except Exception as e:
+        mark_failed(job, error=str(e))
         return {"status": JobStatus.FAILED, "job_id": str(job.id), "error": str(e)}
     except Exception as e:
         mark_failed(job, error=str(e))

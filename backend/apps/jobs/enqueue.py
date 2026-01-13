@@ -10,6 +10,7 @@ from .tasks import (
     synergy_process_material_job,
     synergy_solve_test_job,
     synergy_sync_courses_job,
+    synergy_sync_full_job,
     synergy_sync_materials_job,
     synergy_sync_semesters_job,
 )
@@ -21,6 +22,7 @@ def _task_for_type(job_type: str) -> Callable[[str], object] | None:
         JobType.SYNC_SEMESTERS: synergy_sync_semesters_job,
         JobType.SYNC_COURSES: synergy_sync_courses_job,
         JobType.SYNC_MATERIALS: synergy_sync_materials_job,
+        JobType.SYNC_FULL: synergy_sync_full_job,
         JobType.PROCESS_MATERIAL: synergy_process_material_job,
         JobType.SOLVE_TEST: synergy_solve_test_job,
     }
