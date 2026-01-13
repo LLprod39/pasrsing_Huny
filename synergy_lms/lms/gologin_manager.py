@@ -2,8 +2,8 @@
 import requests
 import json
 from typing import Optional
-from config import Config
-from logger import setup_logger
+from synergy_lms.config import Config
+from synergy_lms.logger import setup_logger
 
 logger = setup_logger(__name__)
 

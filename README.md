@@ -1,90 +1,153 @@
-# Парсер LMS Synergy
+# Synergy LMS Automation
 
-Автоматизация просмотра материалов и прохождения тестов в системе обучения Synergy.
+Автоматизация LMS Synergy: авторизация, парсинг семестров/курсов, автопросмотр материалов и автопрохождение тестов (random/AI).  
+Есть **CLI меню**, **полноэкранный TUI** и **Web UI**.
 
-## Возможности
+> Важно: папка `old_pasrsing_старайпроект_нетрогать` — это старый проект. Он сохранён как есть и не используется текущим кодом.
 
-- ✅ Автоматическая авторизация на LMS Synergy
-- ✅ Просмотр видео материалов с симуляцией просмотра
-- ✅ Подтверждение изучения материалов
-- ✅ Автоматическое прохождение тестов
-- ✅ Поддержка Gologin для обхода детекции
-- ✅ Интерактивный выбор семестров, курсов и материалов
+## Быстрый старт
 
-## Установка
+### Установка
 
-1. Установите зависимости:
+1) Установите зависимости:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Скопируйте `env_template.txt` в `.env` и заполните данные:
+2) (Опционально) Установите пакет в режиме разработки для удобства импортов:
+
+```bash
+pip install -e .
+```
+
+**Примечание:** Скрипты в `scripts/` работают и без установки пакета, так как они автоматически добавляют корневую директорию проекта в `sys.path`.
+
+3) Создайте `.env` из шаблона:
+
+- Windows:
+
 ```bash
 copy env_template.txt .env
 ```
 
-3. Отредактируйте `.env` файл и укажите:
-   - `LOGIN` - логин/email для LMS Synergy
-   - `PASSWORD` - пароль для LMS Synergy
-   - `GOLOGIN_API_TOKEN` - токен API Gologin (опционально)
-   - `GOLOGIN_PROFILE_ID` - ID профиля Gologin (опционально)
-
-## Использование
+- Linux/macOS:
 
 ```bash
-python main.py
+cp env_template.txt .env
 ```
 
-Программа предложит:
-1. Выбрать семестр
-2. Выбрать курсы для обработки
-3. Выбрать материалы для обработки (или обработать все)
+4) Заполните `.env` минимум:
+- `LOGIN`
+- `PASSWORD`
 
-## Новый красивый CLI (TUI, чат-интерфейс)
+### Запуск
 
-Полноэкранный интерфейс “как чат” с историей сообщений, таблицами и панелью логов:
+- Интерактивное CLI меню:
 
 ```bash
-python synergy_tui.py
+python scripts/cli.py
 ```
 
-Основные команды внутри:
-- `/start` — авторизация и загрузка семестров
-- `/sem <N>` — выбрать семестр
-- `/open <I>` — открыть курс по номеру
-- `/pick all|1,2,3` — выбрать материалы текущего курса
-- `/run` — обработать выбранные материалы
-- `/stop` — остановить текущий запуск
-- `/status` — статус
-- `/exit` — выход
+- Полноэкранный TUI (Textual):
 
-## Структура проекта
+```bash
+python scripts/tui.py
+```
 
-- `main.py` - главный файл запуска с интерактивным меню
-- `synergy_tui.py` - полноэкранный TUI (чат-подобный интерфейс в терминале)
-- `config.py` - загрузка конфигурации из .env
-- `auth.py` - модуль авторизации с поддержкой Gologin
-- `course_parser.py` - парсинг курсов и материалов
-- `material_processor.py` - обработка материалов (видео, PDF) с подтверждением
-- `test_solver.py` - автоматическое прохождение тестов
-- `gologin_manager.py` - управление Gologin профилями
-- `logger.py` - настройка логирования
+- Web UI (FastAPI + статика):
 
-## Настройка Gologin (опционально)
+```bash
+python scripts/web.py
+```
 
-Если используете Gologin для обхода детекции:
-1. Получите API токен на https://gologin.com
-2. Создайте профиль браузера
-3. Укажите `GOLOGIN_API_TOKEN` и `GOLOGIN_PROFILE_ID` в `.env`
+Откройте в браузере: `http://127.0.0.1:8000`
 
-Если Gologin не настроен, будет использован обычный Chrome браузер с настройками для обхода детекции.
+- Самопроверка AI-провайдера (choice/text/order/match):
 
-## Настройки в .env
+```bash
+python scripts/ai_selftest.py
+```
 
-- `MIN_VIEW_TIME` - минимальное время просмотра материала в секундах (по умолчанию 30)
-- `TEST_STRATEGY` - стратегия прохождения тестов: `random` (случайные ответы) или `correct` (правильные ответы, если доступны)
-- `LOG_LEVEL` - уровень логирования: DEBUG, INFO, WARNING, ERROR
+## Конфигурация (.env)
 
-## Внимание
+Шаблон — в `env_template.txt`.
 
-Этот инструмент предназначен только для образовательных целей. Используйте ответственно и в соответствии с правилами использования LMS Synergy.
+### Обязательные
+
+- `LOGIN`: логин/email от LMS Synergy
+- `PASSWORD`: пароль от LMS Synergy
+
+### Gologin (опционально)
+
+- `GOLOGIN_API_TOKEN`
+- `GOLOGIN_PROFILE_ID`
+
+Если Gologin не настроен — используется обычный Chrome с анти-детект опциями.
+
+### Тесты
+
+- `TEST_STRATEGY`: `random` | `ai`
+- `MAX_TEST_ATTEMPTS`: по умолчанию `3`
+
+### AI (если `TEST_STRATEGY=ai`)
+
+- `AI_PROVIDER`: `grok` | `gemini`
+- `AI_TIMEOUT_SECONDS`: таймаут запросов к AI
+
+Grok (xAI):
+- `GROK_API_KEY`
+- `GROK_MODEL`
+- `GROK_BASE_URL` (по умолчанию `https://api.x.ai/v1`)
+
+Gemini (Google):
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
+
+### Логи и отладка
+
+- `LOG_LEVEL`: `DEBUG|INFO|WARNING|ERROR`
+- `LOG_FILE`: по умолчанию `logs/parser.log`
+- `DEBUG_HTML_DIR`: куда сохранять HTML-дампы (по умолчанию `artifacts/debug_html`)
+- `DEBUG_NDJSON_LOG`: отладочный NDJSON лог (по умолчанию `logs/agent_debug.ndjson`)
+
+## Архитектура и структура проекта
+
+Код проекта разложен по пакетам, чтобы его было проще расширять:
+
+```
+synergy_lms/                 # основной Python-пакет
+  config.py                  # Config (загрузка .env)
+  logger.py                  # setup_logger + файл логов
+  lms/                       # Selenium-автоматизация LMS
+    auth.py
+    gologin_manager.py
+    course_parser.py
+    material_processor.py
+    test_solver.py
+    task_manager.py          # очередь задач для Web UI
+  ai_providers/              # AI провайдеры (grok/gemini) + registry
+  cli/                       # CLI/TUI entrypoints (логика запуска)
+  web/                       # FastAPI app + статика
+    app.py
+    static/
+scripts/                     # удобные команды запуска (python scripts/...)
+docs/                        # документация (например, план разработки)
+logs/                        # runtime логи (gitignored)
+artifacts/                   # артефакты/дампы (gitignored)
+data/                        # данные/fixtures (по желанию)
+old_pasrsing_старайпроект_нетрогать/  # старый проект (не трогать)
+```
+
+## Заметки по Web UI
+
+- Web UI общается с API по `/api/*` и отдаёт статику на `/`.
+- В `task_manager.py` задачи выполняются последовательно (Selenium/WebDriver не потокобезопасен).
+
+## Безопасность
+
+- Файл `.env` уже в `.gitignore` — **не коммитьте** логины/пароли/ключи.
+
+## Дисклеймер
+
+Инструмент предназначен для образовательных целей. Используйте ответственно и в рамках правил LMS Synergy.

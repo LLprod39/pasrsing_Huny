@@ -1,11 +1,11 @@
 """Главный файл для запуска парсера LMS Synergy"""
 import sys
-from config import Config
-from logger import setup_logger
-from auth import AuthManager
-from course_parser import CourseParser
-from material_processor import MaterialProcessor
-from test_solver import TestSolver
+from synergy_lms.config import Config
+from synergy_lms.logger import setup_logger
+from synergy_lms.lms.auth import AuthManager
+from synergy_lms.lms.course_parser import CourseParser
+from synergy_lms.lms.material_processor import MaterialProcessor
+from synergy_lms.lms.test_solver import TestSolver
 
 logger = setup_logger(__name__)
 

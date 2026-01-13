@@ -8,8 +8,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bs4 import BeautifulSoup
-from config import Config
-from logger import setup_logger
+from synergy_lms.config import Config
+from synergy_lms.logger import setup_logger
 
 logger = setup_logger(__name__)
 

@@ -8,14 +8,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from config import Config
-from logger import setup_logger
+from synergy_lms.config import Config
+from synergy_lms.logger import setup_logger
 
 logger = setup_logger(__name__)
 
-# #region agent log
-DEBUG_LOG_PATH = r"c:\testi\.cursor\debug.log"
-# #endregion
+# Отладочный NDJSON лог (по умолчанию в logs/, можно переопределить через DEBUG_NDJSON_LOG)
+DEBUG_LOG_PATH = getattr(Config, "DEBUG_NDJSON_LOG", "") or ""
 
 
 class MaterialProcessor:
@@ -27,7 +26,8 @@ class MaterialProcessor:
     
     def _debug_log(self, location: str, message: str, data: dict = None, hypothesis_id: str = None):
         """Записывает отладочный лог в NDJSON формат"""
-        # #region agent log
+        if not DEBUG_LOG_PATH:
+            return
         try:
             import os
             log_dir = os.path.dirname(DEBUG_LOG_PATH)
@@ -47,7 +47,6 @@ class MaterialProcessor:
                 f.flush()
         except Exception as e:
             logger.debug(f"Ошибка записи debug лога: {e}")
-        # #endregion
     
     def process_material(self, material: Dict) -> Dict:
         """Обработка отдельного учебного материала"""

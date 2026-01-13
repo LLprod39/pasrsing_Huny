@@ -1,20 +1,23 @@
-import logging
-import asyncio
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from __future__ import annotations
+
+import os
+import threading
+from pathlib import Path
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-import os
 
-from config import Config
-from auth import AuthManager
-from course_parser import CourseParser
-from material_processor import MaterialProcessor
-from test_solver import TestSolver
-from task_manager import TaskManager  # NEW
-from logger import setup_logger
+from synergy_lms.config import Config
+from synergy_lms.logger import setup_logger
+from synergy_lms.lms.auth import AuthManager
+from synergy_lms.lms.course_parser import CourseParser
+from synergy_lms.lms.material_processor import MaterialProcessor
+from synergy_lms.lms.test_solver import TestSolver
+from synergy_lms.lms.task_manager import TaskManager
 
 # Настройка логгера
 logger = setup_logger("web_app")
@@ -32,12 +35,17 @@ app.add_middleware(
 
 # Глобальные объекты (синглтоны для сессии)
 class GlobalState:
-    auth_manager: Optional[AuthManager] = None
-    course_parser: Optional[CourseParser] = None
-    material_processor: Optional[MaterialProcessor] = None
-    test_solver: Optional[TestSolver] = None
-    task_manager: Optional[TaskManager] = None # NEW
-    
+    def __init__(self) -> None:
+        # Один общий lock на WebDriver для всех операций (Selenium не потокобезопасен)
+        self.driver_lock = threading.RLock()
+
+        self.auth_manager: Optional[AuthManager] = None
+        self.course_parser: Optional[CourseParser] = None
+        self.material_processor: Optional[MaterialProcessor] = None
+        self.test_solver: Optional[TestSolver] = None
+        self.task_manager: Optional[TaskManager] = None
+
+
 state = GlobalState()
 
 # Модели данных
@@ -62,29 +70,51 @@ class SettingsRequest(BaseModel):
 async def login(request: LoginRequest):
     """Авторизация и инициализация драйвера"""
     try:
-        if state.auth_manager and request.force_restart:
-            if state.auth_manager.driver:
-                state.auth_manager.close()
+        if request.force_restart:
+            # Гарантированно закрываем старую сессию (если есть)
+            try:
+                if state.task_manager:
+                    state.task_manager.close()
+            except Exception:
+                pass
+            try:
+                if state.auth_manager:
+                    with state.driver_lock:
+                        state.auth_manager.close()
+            except Exception:
+                pass
+
             state.auth_manager = None
+            state.course_parser = None
+            state.material_processor = None
+            state.test_solver = None
             state.task_manager = None
 
         if not state.auth_manager:
             Config.validate()
             state.auth_manager = AuthManager()
-            
-        if not state.auth_manager.driver: # Если драйвер упал или еще не создан
-             if not state.auth_manager.login():
-                 if not state.auth_manager.login():
-                    raise HTTPException(status_code=401, detail="Не удалось авторизоваться. Проверьте .env")
+
+        # Если драйвер ещё не создан/упал — создаём + логинимся
+        with state.driver_lock:
+            ok = state.auth_manager.login()
+        if not ok:
+            raise HTTPException(status_code=401, detail="Не удалось авторизоваться. Проверьте .env (LOGIN/PASSWORD)")
         
         # Инициализируем парсеры если их нет
         if not state.course_parser:
             state.course_parser = CourseParser(state.auth_manager.driver)
             state.material_processor = MaterialProcessor(state.auth_manager.driver)
             state.test_solver = TestSolver(state.auth_manager.driver)
-            state.task_manager = TaskManager(state.auth_manager.driver, state.material_processor, state.test_solver) # NEW
+            state.task_manager = TaskManager(
+                state.auth_manager.driver,
+                state.material_processor,
+                state.test_solver,
+                driver_lock=state.driver_lock,
+            )
 
         return {"status": "success", "message": "Авторизация прошла успешно"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Login error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -96,7 +126,8 @@ async def get_semesters():
          raise HTTPException(status_code=401, detail="Not initialized. Please login first.")
     
     try:
-        semesters = state.course_parser.get_available_semesters()
+        with state.driver_lock:
+            semesters = state.course_parser.get_available_semesters()
         return {"semesters": semesters}
     except Exception as e:
         logger.error(f"Error getting semesters: {e}")
@@ -109,7 +140,8 @@ async def get_courses(semester_id: int):
          raise HTTPException(status_code=401, detail="Not initialized.")
     
     try:
-        courses = state.course_parser.get_semester_courses(semester_id)
+        with state.driver_lock:
+            courses = state.course_parser.get_semester_courses(semester_id)
         return {"courses": courses}
     except Exception as e:
         logger.error(f"Error getting courses: {e}")
@@ -122,8 +154,9 @@ async def get_materials(course_url: str):
          raise HTTPException(status_code=401, detail="Not initialized.")
     
     try:
-        structured = state.course_parser.get_course_materials(course_url)
-        flat = state.course_parser.flatten_materials(structured)
+        with state.driver_lock:
+            structured = state.course_parser.get_course_materials(course_url)
+            flat = state.course_parser.flatten_materials(structured)
         # Добавляем course_url
         for item in flat:
             item['course_url'] = course_url
@@ -152,15 +185,23 @@ async def process_material(request: MaterialProcessRequest):
         logger.error(f"Error creating task: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/settings")
+async def update_settings(request: SettingsRequest):
+    """Обновление настроек UI (например, max tabs)."""
+    if not state.task_manager:
+        raise HTTPException(status_code=401, detail="Not initialized.")
+    try:
+        state.task_manager.set_max_concurrent_tasks(request.max_concurrent_tasks)
+        return {"status": "ok", "max_concurrent_tasks": state.task_manager.max_concurrent_tasks}
+    except Exception as e:
+        logger.error(f"Error updating settings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/tasks")
 async def get_tasks():
     """Получение статуса задач"""
     if not state.task_manager:
          return {"tasks": []}
-    
-    # Process tick to update tasks
-    state.task_manager.process_tick()
-    
     return {"tasks": state.task_manager.get_tasks()}
 
 @app.post("/api/tasks/stop/{task_id}")
@@ -175,7 +216,7 @@ async def stop_task(task_id: str):
 @app.get("/api/logs")
 async def get_logs():
     """Чтение последних логов"""
-    log_file = "parser.log" 
+    log_file = Config.LOG_FILE or "parser.log"
     if os.path.exists(log_file):
         with open(log_file, "r", encoding="utf-8") as f:
             lines = f.readlines()
@@ -185,8 +226,9 @@ async def get_logs():
 
 
 # Подключение статики в самом конце, чтобы не перекрывать API
-if os.path.exists("static"):
-    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
 
 if __name__ == "__main__":
-    uvicorn.run("web_app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("synergy_lms.web.app:app", host="0.0.0.0", port=8000, reload=True)

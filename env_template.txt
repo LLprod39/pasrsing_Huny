@@ -38,4 +38,8 @@ GROK_BASE_URL=https://api.x.ai/v1
 
 # Логирование
 LOG_LEVEL=INFO
-LOG_FILE=parser.log
+LOG_FILE=logs/parser.log
+
+# Артефакты/отладка (опционально)
+DEBUG_HTML_DIR=artifacts/debug_html
+DEBUG_NDJSON_LOG=logs/agent_debug.ndjson

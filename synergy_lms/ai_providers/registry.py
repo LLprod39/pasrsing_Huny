@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from config import Config
+from synergy_lms.config import Config
 
-from ai_providers.base import AIProvider
-from ai_providers.grok import GrokConfig, GrokProvider
+from synergy_lms.ai_providers.base import AIProvider
+from synergy_lms.ai_providers.grok import GrokConfig, GrokProvider
+from synergy_lms.ai_providers.gemini import GeminiConfig, GeminiProvider
 
 
 def get_ai_provider() -> AIProvider:
@@ -19,6 +20,14 @@ def get_ai_provider() -> AIProvider:
             timeout_seconds=Config.AI_TIMEOUT_SECONDS,
         )
         return GrokProvider(cfg)
+
+    if provider == "gemini":
+        cfg = GeminiConfig(
+            api_key=Config.GEMINI_API_KEY,
+            model=Config.GEMINI_MODEL,
+            timeout_seconds=Config.AI_TIMEOUT_SECONDS,
+        )
+        return GeminiProvider(cfg)
 
     raise ValueError(f"Неизвестный AI provider: {provider}")
 

@@ -1,19 +1,29 @@
 """Модуль для автоматического прохождения тестов"""
+import os
+import datetime
 import time
 import random
-from typing import Dict, List, Optional
+import re
+from typing import Dict, List, Optional, Tuple
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bs4 import BeautifulSoup
-from config import Config
-from logger import setup_logger
-from ai_providers import AIChoiceRequest, get_ai_provider
+from synergy_lms.config import Config
+from synergy_lms.logger import setup_logger
+from synergy_lms.ai_providers import (
+    AIChoiceRequest,
+    AITextRequest,
+    AIOrderRequest,
+    AIMatchRequest,
+    get_ai_provider,
+)
 
 logger = setup_logger(__name__)
 
+_PHP_STATE_RE = re.compile(r"php\s*=\s*(\{[\s\S]*?\})\s*;")
 
 class TestSolver:
     """Класс для автоматического прохождения тестов"""
@@ -22,14 +32,41 @@ class TestSolver:
         self.driver = driver
         self.wait = WebDriverWait(driver, Config.PAGE_LOAD_TIMEOUT)
         self.strategy = Config.TEST_STRATEGY
+        self._test_frame_stack: List[int] = []
         self._ai_provider = None
         if self.strategy == "ai":
             try:
                 self._ai_provider = get_ai_provider()
+                # Быстрая проверка ключа/доступа, чтобы не падать на каждом вопросе
+                self._warmup_ai_provider()
                 logger.info(f"AI стратегия включена. Провайдер: {Config.AI_PROVIDER}")
             except Exception as e:
                 logger.error(f"Не удалось инициализировать AI провайдера: {e}. Будет использоваться random.")
                 self.strategy = "random"
+                self._ai_provider = None
+
+    def _warmup_ai_provider(self) -> None:
+        """Делаем минимальный запрос к AI для раннего выявления неверного ключа/модели."""
+        if not self._ai_provider:
+            return
+        try:
+            _ = self._ai_provider.choose(
+                AIChoiceRequest(
+                    question="Проверка доступа. Выбери вариант 1.",
+                    options=["OK", "NO"],
+                    multi_select=False,
+                )
+            )
+        except Exception as e:
+            # Если ключ неверный, дальше смысла в AI нет — переключаемся на random
+            msg = str(e)
+            if "Incorrect API key" in msg or "invalid api key" in msg.lower():
+                raise RuntimeError(
+                    "AI не работает: неверный GROK_API_KEY. "
+                    "Исправьте ключ в .env (GROK_API_KEY=...) и перезапустите."
+                ) from e
+            # Для остальных ошибок тоже фейлим ранним сообщением
+            raise
     
     def solve_test(self, test_url: str, test_name: str, course_url: Optional[str] = None) -> Dict:
         """Автоматическое прохождение теста"""
@@ -64,23 +101,42 @@ class TestSolver:
                 logger.error("Не удалось начать тест")
                 results['error'] = "Не удалось начать тест"
                 return results
+
+            # Выбираем лучший iframe/контекст, в котором реально живёт тестовый UI
+            self._test_frame_stack = self._choose_best_test_frame()
+            self._switch_to_frame_stack(self._test_frame_stack)
             
+            # === Synergy assessments/training: один вопрос на страницу (form#player-assessments-form) ===
+            if self._is_synergy_training_player():
+                logger.info("Режим Synergy training player: решаем вопросы по одному на страницу")
+                ok = self._solve_synergy_training_player()
+                if not ok:
+                    results["error"] = "Не удалось решить тест в режиме training player"
+                    return results
+                results["solved"] = True
+                results["score"] = self._get_test_score()
+                results["attempts"] = 1
+                return results
+
             # Получаем вопросы
             questions = self._get_questions()
             logger.info(f"Найдено {len(questions)} вопросов")
             
             if not questions:
                 logger.warning("Вопросы не найдены")
+                self._dump_debug_html(prefix="no_questions")
                 results['error'] = "Вопросы не найдены"
                 return results
             
             # Отвечаем на вопросы
             for i, question in enumerate(questions):
                 logger.info(f"Отвечаем на вопрос {i + 1}/{len(questions)}")
+                self._switch_to_frame_stack(self._test_frame_stack)
                 self._answer_question(question, i)
                 time.sleep(1)  # Небольшая задержка между вопросами
             
             # Отправляем ответы
+            self._switch_to_frame_stack(self._test_frame_stack)
             if self._submit_test():
                 logger.info("Тест отправлен")
                 time.sleep(3)  # Ждем обработки результатов
@@ -101,6 +157,260 @@ class TestSolver:
             logger.error(f"Ошибка при прохождении теста '{test_name}': {e}")
             results['error'] = str(e)
             return results
+
+    def _is_synergy_training_player(self) -> bool:
+        """Детект режима /assessments/training/* где на странице один вопрос и форма player-assessments-form."""
+        try:
+            # У них обычно есть body.class assessments-training и #player form#player-assessments-form
+            if self.driver.find_elements(By.CSS_SELECTOR, "form#player-assessments-form, #player form#player-assessments-form"):
+                return True
+        except Exception:
+            pass
+        try:
+            html = (self.driver.page_source or "").lower()
+            if "assessments/training" in html and "player-assessments-form" in html:
+                return True
+        except Exception:
+            pass
+        return False
+
+    def _solve_synergy_training_player(self) -> bool:
+        """Прохождение теста в режиме, где каждый вопрос — отдельная страница формы."""
+        try:
+            max_steps = 200
+            for step in range(max_steps):
+                self._switch_to_frame_stack(self._test_frame_stack)
+
+                if self._check_test_completed():
+                    return True
+
+                # AJAX: страница может быть "оболочкой" с пустым #player — ждём пока появится форма вопроса
+                if not self._wait_synergy_player_question_ready(timeout=12):
+                    logger.warning("Synergy training: форма вопроса не появилась (возможно AJAX не успел/не сработал)")
+                    self._dump_debug_html(prefix="synergy_training_player_not_ready")
+                    return False
+
+                qnum, qtotal = self._get_synergy_question_progress()
+                q = self._extract_current_question_synergy()
+                if not q:
+                    logger.warning("Не удалось извлечь текущий вопрос (synergy training)")
+                    self._dump_debug_html(prefix="synergy_training_no_question")
+                    return False
+
+                logger.info(f"Synergy training: вопрос {qnum}/{qtotal} тип={q.get('type')}")
+                if (q.get("type") or "") == "unknown":
+                    # чтобы можно было допилить обработку (dragdrop/order/нестандартные варианты)
+                    self._dump_debug_html(prefix=f"synergy_training_unknown_q{qnum}")
+                self._answer_question(q, max(0, qnum - 1))
+                time.sleep(0.3)
+
+                # После ответа — нажимаем "Ответить" (submit_send)
+                before = qnum
+                if not self._click_synergy_send_answer():
+                    # Если нет "Ответить", попробуем "Сдать тест" (вдруг это последний экран)
+                    if self._click_synergy_finish():
+                        time.sleep(2)
+                        return True
+                    logger.warning("Кнопка 'Ответить' не найдена")
+                    self._dump_debug_html(prefix="synergy_training_no_send_btn")
+                    return False
+
+                # Ждём перехода к следующему вопросу или результатов
+                end = time.time() + 12
+                while time.time() < end:
+                    self._switch_to_frame_stack(self._test_frame_stack)
+                    if self._check_test_completed():
+                        return True
+                    # Снова ждём, пока AJAX подгрузит новую форму
+                    self._wait_synergy_player_question_ready(timeout=2)
+                    now, _tot = self._get_synergy_question_progress()
+                    if now != before:
+                        break
+                    time.sleep(0.5)
+
+                # Если дошли до последнего вопроса — пробуем завершить
+                if qtotal and qnum >= qtotal:
+                    if self._click_synergy_finish():
+                        time.sleep(3)
+                        return True
+
+            logger.warning("Synergy training: превышен лимит шагов")
+            self._dump_debug_html(prefix="synergy_training_max_steps")
+            return False
+        except Exception as e:
+            logger.error(f"Synergy training: ошибка: {e}")
+            self._dump_debug_html(prefix="synergy_training_exception")
+            return False
+
+    def _wait_synergy_player_question_ready(self, timeout: int = 10) -> bool:
+        """Ожидает появления формы текущего вопроса в training player (AJAX наполняет #player)."""
+        try:
+            self._switch_to_frame_stack(self._test_frame_stack)
+        except Exception:
+            pass
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "form#player-assessments-form"))
+            )
+            return True
+        except Exception:
+            pass
+        # Иногда форма рендерится внутри #player, но селектор выше всё равно должен работать.
+        # На всякий случай проверим, что #player не пустой.
+        try:
+            player = self.driver.find_elements(By.ID, "player")
+            if player:
+                inner = (player[0].get_attribute("innerHTML") or "").strip()
+                if inner:
+                    # есть контент, но форма могла быть не отрисована ещё — дадим короткую паузу
+                    time.sleep(0.5)
+                    return len(self.driver.find_elements(By.CSS_SELECTOR, "form#player-assessments-form")) > 0
+        except Exception:
+            pass
+        return False
+
+    def _get_synergy_question_progress(self) -> Tuple[int, int]:
+        """Читает 'Вопрос N' и 'из M' из шапки."""
+        n = 0
+        total = 0
+        try:
+            el = self.driver.find_elements(By.CSS_SELECTOR, "span.player-questions")
+            if el:
+                txt = (el[0].text or "").strip()
+                # "Вопрос 1"
+                parts = [p for p in txt.split() if p.isdigit()]
+                if parts:
+                    n = int(parts[0])
+        except Exception:
+            pass
+        try:
+            el = self.driver.find_elements(By.CSS_SELECTOR, "span.test-sub-question")
+            if el:
+                txt = (el[0].text or "").strip()
+                # "из 10"
+                digits = [p for p in txt.split() if p.isdigit()]
+                if digits:
+                    total = int(digits[0])
+        except Exception:
+            pass
+        # Fallback: php={"questionsCount":"10","item":1,...}
+        if (not total) or (not n):
+            try:
+                st = self._get_synergy_php_state()
+                if not total:
+                    v = st.get("questionsCount")
+                    if v is not None:
+                        total = int(v)
+                if not n:
+                    v = st.get("item")
+                    if v is not None:
+                        n = int(v)
+            except Exception:
+                pass
+        return n, total
+
+    def _get_synergy_php_state(self) -> Dict:
+        """Парсит inline js: php={...};"""
+        try:
+            html = self.driver.page_source or ""
+            m = _PHP_STATE_RE.search(html)
+            if not m:
+                return {}
+            import json
+            obj = json.loads(m.group(1))
+            return obj if isinstance(obj, dict) else {}
+        except Exception:
+            return {}
+
+    def _extract_current_question_synergy(self) -> Optional[Dict]:
+        """Извлекает текущий вопрос и ответы из Synergy training player."""
+        try:
+            form = None
+            forms = self.driver.find_elements(By.CSS_SELECTOR, "form#player-assessments-form")
+            if forms:
+                form = forms[0]
+            if not form:
+                return None
+
+            # Текст вопроса
+            q_text = ""
+            try:
+                q_el = self.driver.find_elements(By.CSS_SELECTOR, ".test-question-text-2")
+                if q_el:
+                    q_text = (q_el[0].text or "").strip()
+            except Exception:
+                pass
+            q_text = q_text or "Вопрос"
+
+            # Тип по php.questionType
+            php_state = self._get_synergy_php_state()
+            qtype = (php_state.get("questionType") or "").strip()
+
+            # Текстовый ответ
+            text_inputs = form.find_elements(By.CSS_SELECTOR, "textarea[name='answers'], input[type='text'][name='answers'], textarea, input[type='text']")
+            if text_inputs and (qtype.lower() == "textentry" or qtype == ""):
+                answers = [{"input": ti, "kind": "text"} for ti in text_inputs]
+                return {"text": q_text, "type": "text", "answers": answers}
+
+            # Выбор вариантов (radio/checkbox)
+            choice_inputs = form.find_elements(By.CSS_SELECTOR, "input[type='radio'], input[type='checkbox']")
+            if choice_inputs:
+                answers = []
+                for inp in choice_inputs:
+                    label_txt = ""
+                    try:
+                        label_txt = self.driver.execute_script(
+                            "return arguments[0].labels && arguments[0].labels[0] ? arguments[0].labels[0].textContent : ''",
+                            inp,
+                        ) or ""
+                    except Exception:
+                        label_txt = ""
+                    if not label_txt:
+                        try:
+                            # часто label рядом
+                            parent = inp.find_element(By.XPATH, "./..")
+                            label_txt = (parent.text or "").strip()
+                        except Exception:
+                            label_txt = ""
+                    answers.append({"input": inp, "text": (label_txt or "Вариант").strip(), "value": inp.get_attribute("value"), "kind": "choice"})
+                return {"text": q_text, "type": "choice", "answers": answers}
+
+            # Пока не видим ни текстовых полей, ни выбора — неизвестно
+            return {"text": q_text, "type": "unknown", "answers": []}
+        except Exception:
+            return None
+
+    def _click_synergy_send_answer(self) -> bool:
+        """Жмёт кнопку 'Ответить' в форме (submit_send)."""
+        try:
+            # Селекторы из вашего HTML: input[name=submit_send].doSendBtn value="Ответить"
+            btns = self.driver.find_elements(By.CSS_SELECTOR, "input[name='submit_send'].doSendBtn, input[name='submit_send'], .doSendBtn")
+            for b in btns:
+                try:
+                    if b.is_displayed() and b.is_enabled():
+                        self.driver.execute_script("arguments[0].click();", b)
+                        return True
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        # Фоллбэк по тексту/значению
+        return self._click_by_text(["button", "a"], ["Ответить"])
+
+    def _click_synergy_finish(self) -> bool:
+        """Жмёт кнопку 'Сдать тест'."""
+        try:
+            btns = self.driver.find_elements(By.CSS_SELECTOR, "input.doFinishBtn, input[value*='Сдать']")
+            for b in btns:
+                try:
+                    if b.is_displayed() and b.is_enabled():
+                        self.driver.execute_script("arguments[0].click();", b)
+                        return True
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return self._click_by_text(["button", "a"], ["Сдать тест", "Завершить тест", "Завершить"])
 
     def _open_test(self, test_url: str, test_name: str, course_url: Optional[str]) -> None:
         """Открыть тест. Если есть course_url — открываем тест кликом из курса (как в старом подходе)."""
@@ -340,6 +650,16 @@ class TestSolver:
                 
                 # После startPlayerBtn может появиться модальное окно с кнопкой "Перейти к тесту"
                 self._click_modal_start_test()
+
+                # После модалки ждём, что появится UI теста (или хотя бы inputs) в каком-то контексте
+                try:
+                    end = time.time() + 10
+                    while time.time() < end:
+                        if self._is_test_ui_present():
+                            break
+                        time.sleep(0.5)
+                except Exception:
+                    pass
                 
                 # после перехода к тесту цикл можно завершать
                 logger.info("Идентификация: успешно пройдена")
@@ -798,28 +1118,100 @@ class TestSolver:
 
     def _click_by_text(self, tags: List[str], texts: List[str]) -> bool:
         """Клик по элементу (button/a) содержащему один из текстов. Selenium CSS :contains НЕ поддерживает."""
-        for t in texts:
-            # 1) button/a содержит текст
-            for tag in tags:
+        # Пробуем в default_content и во всех iframe (глубина 2)
+        stacks = self._iter_frame_stacks(max_depth=2)
+        for stack in stacks:
+            try:
+                self._switch_to_frame_stack(stack)
+            except Exception:
+                continue
+            for t in texts:
+                # 1) button/a содержит текст
+                for tag in tags:
+                    try:
+                        el = self.driver.find_element(By.XPATH, f"//{tag}[contains(normalize-space(.), '{t}')]")
+                        if el and el.is_displayed() and el.is_enabled():
+                            self.driver.execute_script("arguments[0].click();", el)
+                            return True
+                    except Exception:
+                        pass
+                # 2) input[type=submit/button] value содержит текст
                 try:
-                    el = self.driver.find_element(By.XPATH, f"//{tag}[contains(normalize-space(.), '{t}')]")
+                    el = self.driver.find_element(
+                        By.XPATH,
+                        f"//input[(@type='submit' or @type='button') and contains(@value, '{t}')]",
+                    )
                     if el and el.is_displayed() and el.is_enabled():
                         self.driver.execute_script("arguments[0].click();", el)
                         return True
                 except Exception:
                     pass
-            # 2) input[type=submit/button] value содержит текст
+        return False
+
+    def _iter_frame_stacks(self, max_depth: int = 2) -> List[List[int]]:
+        """Все варианты переключения в iframe (default + глубина до max_depth)."""
+        stacks: List[List[int]] = [[]]
+        try:
+            self.driver.switch_to.default_content()
+            frames_lvl1 = self.driver.find_elements(By.TAG_NAME, "iframe")
+        except Exception:
+            frames_lvl1 = []
+
+        for i in range(len(frames_lvl1)):
+            stacks.append([i])
+            if max_depth >= 2:
+                try:
+                    self.driver.switch_to.default_content()
+                    self.driver.switch_to.frame(i)
+                    frames_lvl2 = self.driver.find_elements(By.TAG_NAME, "iframe")
+                except Exception:
+                    frames_lvl2 = []
+                finally:
+                    try:
+                        self.driver.switch_to.default_content()
+                    except Exception:
+                        pass
+                for j in range(len(frames_lvl2)):
+                    stacks.append([i, j])
+        return stacks
+
+    def _choose_best_test_frame(self) -> List[int]:
+        """Выбирает iframe-контекст, где больше всего признаков теста (вопросы/варианты)."""
+        best_stack: List[int] = []
+        best_score = -1
+        for stack in self._iter_frame_stacks(max_depth=2):
             try:
-                el = self.driver.find_element(
-                    By.XPATH,
-                    f"//input[(@type='submit' or @type='button') and contains(@value, '{t}')]",
-                )
-                if el and el.is_displayed() and el.is_enabled():
-                    self.driver.execute_script("arguments[0].click();", el)
-                    return True
+                self._switch_to_frame_stack(stack)
+            except Exception:
+                continue
+            score = 0
+            try:
+                score += len(self.driver.find_elements(By.CSS_SELECTOR, "input[type='radio'], input[type='checkbox']")) * 3
             except Exception:
                 pass
-        return False
+            try:
+                html = (self.driver.page_source or "").lower()
+                if "вопрос" in html:
+                    score += 2
+                if "test" in html or "quiz" in html:
+                    score += 1
+            except Exception:
+                pass
+            try:
+                # доп. признак: есть контейнеры вопросов
+                score += len(self.driver.find_elements(By.CSS_SELECTOR, ".question, .test-question, .question-item, [data-question-id]"))
+            except Exception:
+                pass
+            if score > best_score:
+                best_score = score
+                best_stack = stack
+
+        try:
+            self.driver.switch_to.default_content()
+        except Exception:
+            pass
+        logger.info(f"[DEBUG] Выбран контекст теста (iframe stack): {best_stack}, score={best_score}")
+        return best_stack
     
     def _check_test_completed(self) -> bool:
         """Проверка, пройден ли уже тест"""
@@ -907,6 +1299,9 @@ class TestSolver:
         questions: List[Dict] = []
 
         try:
+            # Держимся выбранного контекста теста
+            self._switch_to_frame_stack(self._test_frame_stack)
+
             # 1) Ищем контейнеры вопросов через Selenium (чтобы видеть динамический DOM).
             container_selectors = [
                 ".question", ".test-question", ".question-item", ".question-block",
@@ -1042,19 +1437,22 @@ class TestSolver:
                 return answers, "text"
 
             # 4) Drag & drop / matching.
-            drag_sources = question_el.find_elements(By.CSS_SELECTOR, "[draggable='true'], .drag, .draggable, .mc-drag, [data-answer-id]")
+            drag_sources = question_el.find_elements(
+                By.CSS_SELECTOR,
+                "[draggable='true'], .drag, .draggable, .mc-drag, [data-answer-id], .ui-sortable-handle",
+            )
             drop_targets = question_el.find_elements(By.CSS_SELECTOR, ".drop, .target, .mc-drop, .droppable, [data-target]")
+
+            # 4a) matching: источники + явные цели
             if drag_sources and drop_targets:
-                answers = [
-                    {"source": s, "text": (s.text or "").strip(), "kind": "drag-source"}
-                    for s in drag_sources
-                ]
-                # Сохраняем цели отдельно
-                targets = [
-                    {"target": t, "text": (t.text or "").strip(), "kind": "drag-target"}
-                    for t in drop_targets
-                ]
+                answers = [{"source": s, "text": (s.text or "").strip(), "kind": "drag-source"} for s in drag_sources]
+                targets = [{"target": t, "text": (t.text or "").strip(), "kind": "drag-target"} for t in drop_targets]
                 return answers + targets, "dragdrop"
+
+            # 4b) order/sort: есть draggable элементы, но нет целей (нужно упорядочить внутри списка)
+            if drag_sources and not drop_targets:
+                answers = [{"item": s, "text": (s.text or "").strip(), "kind": "order-item"} for s in drag_sources]
+                return answers, "order"
 
             # 5) Фолбэк: просто текст вопроса.
             q_type = "unknown"
@@ -1074,6 +1472,10 @@ class TestSolver:
 
             if q_type == "dragdrop":
                 self._answer_dragdrop_question(question)
+                return
+
+            if q_type == "order":
+                self._answer_order_question(question)
                 return
 
             # Все варианты выбора (radio/checkbox/кнопки)
@@ -1222,10 +1624,28 @@ class TestSolver:
             if not answers:
                 logger.warning("Текстовые поля не найдены")
                 return
-            for ans in answers:
+            # AI-режим: просим тексты под количество полей
+            fill_texts: List[str] = []
+            if self.strategy == "ai" and self._ai_provider:
+                q_text = str(question.get("text") or "").strip()
+                if not q_text:
+                    q_text = "Введите ответ в текстовое поле."
+                try:
+                    resp = self._ai_provider.text(AITextRequest(question=q_text, fields=len(answers)))
+                    fill_texts = [t.strip() for t in (resp.texts or [])]
+                except Exception as e:
+                    logger.warning(f"AI text не удалось: {e}")
+
+            if not fill_texts:
+                fill_texts = ["Автоответ"] * len(answers)
+            if len(fill_texts) < len(answers):
+                fill_texts.extend(["Автоответ"] * (len(answers) - len(fill_texts)))
+
+            for idx, ans in enumerate(answers):
                 inp = ans.get("input")
                 if not inp:
                     continue
+                value = fill_texts[idx]
                 try:
                     self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", inp)
                 except Exception:
@@ -1235,11 +1655,10 @@ class TestSolver:
                 except Exception:
                     pass
                 try:
-                    inp.send_keys("Автоответ")
+                    inp.send_keys(value)
                 except Exception:
-                    # fallback: set value через JS
                     try:
-                        self.driver.execute_script("arguments[0].value = arguments[1];", inp, "Автоответ")
+                        self.driver.execute_script("arguments[0].value = arguments[1];", inp, value)
                     except Exception:
                         pass
         except Exception as e:
@@ -1270,17 +1689,42 @@ class TestSolver:
                 raise
 
     def _answer_dragdrop_question(self, question: Dict):
-        """Поддержка drag&drop: сопоставляем источники и цели по порядку."""
+        """Поддержка drag&drop: matching (AI/по порядку)."""
         try:
             answers = question.get("answers", [])
-            sources = [a.get("source") for a in answers if a.get("kind") == "drag-source" and a.get("source")]
-            targets = [a.get("target") for a in answers if a.get("kind") == "drag-target" and a.get("target")]
+            src_entries = [a for a in answers if a.get("kind") == "drag-source" and a.get("source")]
+            tgt_entries = [a for a in answers if a.get("kind") == "drag-target" and a.get("target")]
+            sources = [a.get("source") for a in src_entries]
+            targets = [a.get("target") for a in tgt_entries]
 
             if not sources or not targets:
                 logger.warning("Drag&drop: не найдены источники или цели")
                 return
 
-            # Сопоставляем один к одному, избыточные источники тащим к последней цели
+            # AI: сопоставляем по текстам
+            if self.strategy == "ai" and self._ai_provider:
+                q_text = str(question.get("text") or "").strip() or "Сопоставьте элементы."
+                left = [str(a.get("text") or "").strip() or f"Left {i+1}" for i, a in enumerate(src_entries)]
+                right = [str(a.get("text") or "").strip() or f"Right {i+1}" for i, a in enumerate(tgt_entries)]
+                try:
+                    resp = self._ai_provider.match(AIMatchRequest(question=q_text, left_items=left, right_items=right))
+                    if resp.pairs:
+                        used_left = set()
+                        for li, ri in resp.pairs:
+                            if not (1 <= li <= len(sources) and 1 <= ri <= len(targets)):
+                                continue
+                            if li in used_left:
+                                continue
+                            used_left.add(li)
+                            try:
+                                self._drag_and_drop(sources[li - 1], targets[ri - 1])
+                            except Exception as e:
+                                logger.warning(f"Drag&drop (AI) пара не выполнена: {e}")
+                        return
+                except Exception as e:
+                    logger.warning(f"Drag&drop (AI) не удалось: {e}")
+
+            # Fallback: сопоставляем один к одному по порядку
             for idx, src in enumerate(sources):
                 tgt = targets[idx] if idx < len(targets) else targets[-1]
                 try:
@@ -1289,6 +1733,79 @@ class TestSolver:
                     logger.warning(f"Drag&drop пара не выполнена: {e}")
         except Exception as e:
             logger.error(f"Ошибка drag&drop ответа: {e}")
+
+    def _answer_order_question(self, question: Dict):
+        """Сортировка элементов (перетаскивание в нужном порядке)."""
+        try:
+            answers = question.get("answers", [])
+            items = [a for a in answers if a.get("kind") == "order-item" and a.get("item")]
+            if not items:
+                logger.warning("Order: элементы для сортировки не найдены")
+                return
+
+            q_text = str(question.get("text") or "").strip() or "Расставьте элементы в правильном порядке."
+            item_texts = [str(a.get("text") or "").strip() or f"Item {i+1}" for i, a in enumerate(items)]
+
+            desired: List[int] = []
+            if self.strategy == "ai" and self._ai_provider:
+                try:
+                    resp = self._ai_provider.order(AIOrderRequest(question=q_text, items=item_texts))
+                    desired = [int(x) for x in (resp.order or [])]
+                except Exception as e:
+                    logger.warning(f"Order (AI) не удалось: {e}")
+
+            # Fallback: оставить как есть
+            if not desired:
+                logger.info("Order: AI не дал порядок, оставляем текущий")
+                return
+
+            # Нормализация order
+            desired = [x for x in desired if 1 <= x <= len(items)]
+            if len(desired) != len(items):
+                # дополняем теми, кого не хватило
+                rest = [i for i in range(1, len(items) + 1) if i not in desired]
+                desired.extend(rest)
+
+            # Пробуем переставить: drag item onto item currently at target position.
+            current_elems = [a.get("item") for a in items]
+            for target_pos, src_index_1b in enumerate(desired, start=1):
+                try:
+                    src_el = current_elems[src_index_1b - 1]
+                    dst_el = current_elems[target_pos - 1]
+                    if src_el == dst_el:
+                        continue
+                    self._drag_and_drop(src_el, dst_el)
+                    time.sleep(0.2)
+                except Exception as e:
+                    logger.warning(f"Order: не удалось переставить элемент на позицию {target_pos}: {e}")
+
+        except Exception as e:
+            logger.error(f"Ошибка order-ответа: {e}")
+
+    def _dump_debug_html(self, prefix: str) -> None:
+        """Сохраняет текущий HTML страницы для анализа разметки теста."""
+        try:
+            debug_dir = (getattr(Config, "DEBUG_HTML_DIR", "") or os.path.join("artifacts", "debug_html")).strip()
+            os.makedirs(debug_dir, exist_ok=True)
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            # dump default + все iframe (глубина 2), чтобы не потерять контент теста
+            for stack in self._iter_frame_stacks(max_depth=2):
+                try:
+                    self._switch_to_frame_stack(stack)
+                except Exception:
+                    continue
+                suffix = "root" if not stack else "frame_" + "_".join(str(x) for x in stack)
+                name = os.path.join(debug_dir, f"{prefix}_{suffix}_{ts}.html")
+                html = self.driver.page_source or ""
+                with open(name, "w", encoding="utf-8") as f:
+                    f.write(html)
+            try:
+                self.driver.switch_to.default_content()
+            except Exception:
+                pass
+            logger.info(f"[DEBUG] HTML сохранён: {os.path.join(debug_dir, f'{prefix}_*_{ts}.html')}")
+        except Exception as e:
+            logger.debug(f"[DEBUG] Не удалось сохранить HTML: {e}")
     
     def _answer_correctly(self, question: Dict):
         """Правильный ответ (если есть доступ к правильным ответам)"""

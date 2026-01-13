@@ -5,9 +5,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from config import Config
-from logger import setup_logger
-from gologin_manager import GologinManager
+from synergy_lms.config import Config
+from synergy_lms.logger import setup_logger
+from synergy_lms.lms.gologin_manager import GologinManager
 
 logger = setup_logger(__name__)
 

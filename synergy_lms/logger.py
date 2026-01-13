@@ -2,8 +2,9 @@
 import logging
 import sys
 import io
+import os
 import colorlog
-from config import Config
+from synergy_lms.config import Config
 
 # Настройка кодировки для Windows консоли
 if sys.platform == 'win32':
@@ -21,7 +22,7 @@ if sys.platform == 'win32':
 def setup_logger(name: str = __name__) -> logging.Logger:
     """Настройка логгера с цветным выводом"""
     logger = logging.getLogger(name)
-    logger.setLevel(getattr(logging, Config.LOG_LEVEL))
+    logger.setLevel(getattr(logging, Config.LOG_LEVEL, logging.INFO))
     
     # Очищаем существующие обработчики
     logger.handlers.clear()
@@ -45,7 +46,11 @@ def setup_logger(name: str = __name__) -> logging.Logger:
     console_handler.setFormatter(console_format)
     
     # Файловый обработчик
-    file_handler = logging.FileHandler(Config.LOG_FILE, encoding='utf-8')
+    log_path = Config.LOG_FILE
+    log_dir = os.path.dirname(log_path)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
+    file_handler = logging.FileHandler(log_path, encoding='utf-8')
     file_handler.setLevel(logging.DEBUG)
     
     # Форматтер для файла
