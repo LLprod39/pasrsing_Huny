@@ -114,7 +114,7 @@ STATIC_ROOT = str(BACKEND_DIR / "staticfiles")
 
 
 # ===== CORS =====
-CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "1").strip() in {"1", "true", "True", "yes", "YES"}
+CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "1").strip() in {"1", "true", "True", "TRUE", "yes", "YES"}
 
 
 # ===== DRF =====
@@ -141,6 +141,9 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+
+# Dev helper: allow running tasks synchronously when broker/worker isn't available.
+CELERY_TASK_ALWAYS_EAGER = os.environ.get("CELERY_TASK_ALWAYS_EAGER", "0").strip() in {"1", "true", "True", "TRUE", "yes", "YES"}
 
 
 # ===== Security / encryption =====

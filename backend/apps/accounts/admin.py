@@ -6,7 +6,7 @@ from django.utils import timezone
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 
 from apps.jobs.models import Job, JobStatus, JobType
-from apps.jobs.tasks import synergy_login_job, synergy_sync_semesters_job
+from apps.jobs.enqueue import enqueue_job
 from apps.synergy.forms import SynergyCredentialInlineForm
 from apps.synergy.models import SynergyCredential
 from apps.billing.models import Payment, Subscription
@@ -115,11 +115,9 @@ class StudentAdmin(ModelAdmin):
             job = Job.objects.create(
                 student=student, type=JobType.LOGIN, status=JobStatus.PENDING, params=None, result=None
             )
-            async_result = synergy_login_job.delay(str(job.id))
-            job.celery_task_id = async_result.id
-            job.save(update_fields=["celery_task_id", "updated_at"])
-            created += 1
-        self.message_user(request, f"Queued {created} login job(s).")
+            if enqueue_job(job):
+                created += 1
+        self.message_user(request, f"Queued {created} login job(s). (Check Jobs for errors if broker is down)")
 
     @admin.action(description="Synergy: синхронизировать семестры (создать Job)")
     def queue_sync_semesters(self, request, queryset):
@@ -128,9 +126,7 @@ class StudentAdmin(ModelAdmin):
             job = Job.objects.create(
                 student=student, type=JobType.SYNC_SEMESTERS, status=JobStatus.PENDING, params=None, result=None
             )
-            async_result = synergy_sync_semesters_job.delay(str(job.id))
-            job.celery_task_id = async_result.id
-            job.save(update_fields=["celery_task_id", "updated_at"])
-            created += 1
-        self.message_user(request, f"Queued {created} sync_semesters job(s).")
+            if enqueue_job(job):
+                created += 1
+        self.message_user(request, f"Queued {created} sync_semesters job(s). (Check Jobs for errors if broker is down)")
 

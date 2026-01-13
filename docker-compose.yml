@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16
+    container_name: synergy_postgres
+    environment:
+      POSTGRES_DB: synergy
+      POSTGRES_USER: synergy
+      POSTGRES_PASSWORD: synergy
+    ports:
+      - "5433:5432"
+    volumes:
+      - synergy_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synergy -d synergy"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7
+    container_name: synergy_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - synergy_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  synergy_postgres_data:
+  synergy_redis_data:
+

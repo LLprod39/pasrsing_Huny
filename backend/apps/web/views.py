@@ -10,14 +10,7 @@ from apps.billing.models import Payment, Plan, Subscription, SubscriptionStatus
 from apps.billing.services import has_access
 from apps.jobs.models import Job, JobStatus
 from apps.jobs.models import JobType
-from apps.jobs.tasks import (
-    synergy_login_job,
-    synergy_process_material_job,
-    synergy_solve_test_job,
-    synergy_sync_courses_job,
-    synergy_sync_materials_job,
-    synergy_sync_semesters_job,
-)
+from apps.jobs.enqueue import enqueue_job
 from apps.synergy.models import Course, Material, Semester
 from apps.synergy.models import SynergyCredential
 
@@ -284,9 +277,7 @@ def synergy_setup(request: HttpRequest) -> HttpResponse:
             messages.success(request, "Synergy логин/пароль сохранены.")
             # Optionally enqueue login check
             job = Job.objects.create(student=student, type=JobType.LOGIN, status=JobStatus.PENDING, params=None, result=None)
-            async_result = synergy_login_job.delay(str(job.id))
-            job.celery_task_id = async_result.id
-            job.save(update_fields=["celery_task_id", "updated_at"])
+            enqueue_job(job)
             return redirect("web:flow_semesters")
     else:
         form = SynergyCredentialWebForm(initial={"login": getattr(cred, "login", "")})
@@ -308,10 +299,11 @@ def flow_semesters(request: HttpRequest) -> HttpResponse:
     # sync button
     if request.method == "POST" and request.POST.get("action") == "sync":
         job = Job.objects.create(student=student, type=JobType.SYNC_SEMESTERS, status=JobStatus.PENDING, params=None, result=None)
-        async_result = synergy_sync_semesters_job.delay(str(job.id))
-        job.celery_task_id = async_result.id
-        job.save(update_fields=["celery_task_id", "updated_at"])
-        messages.success(request, "Задача синхронизации семестров поставлена. Обновите страницу через минуту.")
+        ok = enqueue_job(job)
+        if ok:
+            messages.success(request, "Задача синхронизации семестров поставлена. Обновите страницу через минуту.")
+        else:
+            messages.error(request, f"Не удалось запустить задачу. Откройте Jobs и посмотрите ошибку для job {job.id}.")
         return redirect("web:flow_semesters")
 
     semesters_qs = Semester.objects.filter(student=student).order_by("number")
@@ -376,10 +368,11 @@ def flow_courses(request: HttpRequest) -> HttpResponse:
             params={"semester_number": semester_number},
             result=None,
         )
-        async_result = synergy_sync_courses_job.delay(str(job.id))
-        job.celery_task_id = async_result.id
-        job.save(update_fields=["celery_task_id", "updated_at"])
-        messages.success(request, "Задача синхронизации курсов поставлена. Обновите страницу через минуту.")
+        ok = enqueue_job(job)
+        if ok:
+            messages.success(request, "Задача синхронизации курсов поставлена. Обновите страницу через минуту.")
+        else:
+            messages.error(request, f"Не удалось запустить задачу. Откройте Jobs и посмотрите ошибку для job {job.id}.")
         return redirect("web:flow_courses")
 
     courses = list(Course.objects.filter(student=student, semester_number=semester_number).order_by("name"))
@@ -434,10 +427,11 @@ def flow_materials(request: HttpRequest) -> HttpResponse:
             params={"course_id": course.id},
             result=None,
         )
-        async_result = synergy_sync_materials_job.delay(str(job.id))
-        job.celery_task_id = async_result.id
-        job.save(update_fields=["celery_task_id", "updated_at"])
-        messages.success(request, "Задача синхронизации материалов поставлена. Обновите страницу через минуту.")
+        ok = enqueue_job(job)
+        if ok:
+            messages.success(request, "Задача синхронизации материалов поставлена. Обновите страницу через минуту.")
+        else:
+            messages.error(request, f"Не удалось запустить задачу. Откройте Jobs и посмотрите ошибку для job {job.id}.")
         return redirect("web:flow_materials")
 
     materials_qs = Material.objects.filter(student=student, course=course).order_by("type", "name")
@@ -451,15 +445,11 @@ def flow_materials(request: HttpRequest) -> HttpResponse:
         for mid in ids:
             if kind == "process":
                 jt = JobType.PROCESS_MATERIAL
-                task = synergy_process_material_job
             else:
                 jt = JobType.SOLVE_TEST
-                task = synergy_solve_test_job
             job = Job.objects.create(student=student, type=jt, status=JobStatus.PENDING, params={"material_id": mid}, result=None)
-            async_result = task.delay(str(job.id))
-            job.celery_task_id = async_result.id
-            job.save(update_fields=["celery_task_id", "updated_at"])
-            created += 1
+            if enqueue_job(job):
+                created += 1
         return created
 
     if request.method == "POST" and request.POST.get("action") in {"process_selected", "solve_selected", "auto_all"}:

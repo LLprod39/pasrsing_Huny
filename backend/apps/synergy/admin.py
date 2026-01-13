@@ -5,12 +5,7 @@ from django.contrib import admin
 from unfold.admin import ModelAdmin
 
 from apps.jobs.models import Job, JobStatus, JobType
-from apps.jobs.tasks import (
-    synergy_process_material_job,
-    synergy_solve_test_job,
-    synergy_sync_courses_job,
-    synergy_sync_materials_job,
-)
+from apps.jobs.enqueue import enqueue_job
 
 from .forms import SynergyCredentialForm
 from .models import Course, Material, Semester, SynergyCredential
@@ -44,11 +39,9 @@ class SemesterAdmin(ModelAdmin):
                 params={"semester_number": semester.number},
                 result=None,
             )
-            async_result = synergy_sync_courses_job.delay(str(job.id))
-            job.celery_task_id = async_result.id
-            job.save(update_fields=["celery_task_id", "updated_at"])
-            created += 1
-        self.message_user(request, f"Queued {created} sync_courses job(s).")
+            if enqueue_job(job):
+                created += 1
+        self.message_user(request, f"Queued {created} sync_courses job(s). (Check Jobs for errors if broker is down)")
 
 
 @admin.register(Course)
@@ -72,11 +65,9 @@ class CourseAdmin(ModelAdmin):
                 params={"course_id": course.id},
                 result=None,
             )
-            async_result = synergy_sync_materials_job.delay(str(job.id))
-            job.celery_task_id = async_result.id
-            job.save(update_fields=["celery_task_id", "updated_at"])
-            created += 1
-        self.message_user(request, f"Queued {created} sync_materials job(s).")
+            if enqueue_job(job):
+                created += 1
+        self.message_user(request, f"Queued {created} sync_materials job(s). (Check Jobs for errors if broker is down)")
 
 
 @admin.register(Material)
@@ -100,10 +91,8 @@ class MaterialAdmin(ModelAdmin):
             job = Job.objects.create(
                 student=m.student, type=JobType.PROCESS_MATERIAL, status=JobStatus.PENDING, params={"material_id": m.id}
             )
-            async_result = synergy_process_material_job.delay(str(job.id))
-            job.celery_task_id = async_result.id
-            job.save(update_fields=["celery_task_id", "updated_at"])
-            created += 1
+            if enqueue_job(job):
+                created += 1
         self.message_user(request, f"Queued {created} process_material job(s). Skipped: {skipped}.")
 
     @admin.action(description="Synergy: решить тест (создать Job)")
@@ -121,9 +110,7 @@ class MaterialAdmin(ModelAdmin):
             job = Job.objects.create(
                 student=m.student, type=JobType.SOLVE_TEST, status=JobStatus.PENDING, params={"material_id": m.id}
             )
-            async_result = synergy_solve_test_job.delay(str(job.id))
-            job.celery_task_id = async_result.id
-            job.save(update_fields=["celery_task_id", "updated_at"])
-            created += 1
+            if enqueue_job(job):
+                created += 1
         self.message_user(request, f"Queued {created} solve_test job(s). Skipped: {skipped}.")
 

@@ -6,12 +6,7 @@ from rest_framework.response import Response
 
 from apps.jobs.models import Job, JobStatus, JobType
 from apps.jobs.serializers import JobSerializer
-from apps.jobs.tasks import (
-    synergy_login_job,
-    synergy_sync_courses_job,
-    synergy_sync_materials_job,
-    synergy_sync_semesters_job,
-)
+from apps.jobs.enqueue import enqueue_job
 from apps.synergy.models import Course, Material, Semester, SynergyCredential
 from apps.synergy.serializers import (
     CourseSerializer,
@@ -58,9 +53,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         student = self.get_object()
 
         job = Job.objects.create(student=student, type=JobType.LOGIN, status=JobStatus.PENDING, params=None, result=None)
-        async_result = synergy_login_job.delay(str(job.id))
-        job.celery_task_id = async_result.id
-        job.save(update_fields=["celery_task_id", "updated_at"])
+        enqueue_job(job)
 
         return Response(JobSerializer(job).data, status=status.HTTP_202_ACCEPTED)
 
@@ -71,9 +64,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         job = Job.objects.create(
             student=student, type=JobType.SYNC_SEMESTERS, status=JobStatus.PENDING, params=None, result=None
         )
-        async_result = synergy_sync_semesters_job.delay(str(job.id))
-        job.celery_task_id = async_result.id
-        job.save(update_fields=["celery_task_id", "updated_at"])
+        enqueue_job(job)
 
         return Response(JobSerializer(job).data, status=status.HTTP_202_ACCEPTED)
 
@@ -94,9 +85,7 @@ class StudentViewSet(viewsets.ModelViewSet):
             params={"semester_number": semester_number},
             result=None,
         )
-        async_result = synergy_sync_courses_job.delay(str(job.id))
-        job.celery_task_id = async_result.id
-        job.save(update_fields=["celery_task_id", "updated_at"])
+        enqueue_job(job)
         return Response(JobSerializer(job).data, status=status.HTTP_202_ACCEPTED)
 
     @action(detail=True, methods=["post"], url_path="sync-materials")
@@ -116,9 +105,7 @@ class StudentViewSet(viewsets.ModelViewSet):
             params={"course_id": course_id},
             result=None,
         )
-        async_result = synergy_sync_materials_job.delay(str(job.id))
-        job.celery_task_id = async_result.id
-        job.save(update_fields=["celery_task_id", "updated_at"])
+        enqueue_job(job)
         return Response(JobSerializer(job).data, status=status.HTTP_202_ACCEPTED)
 
     @action(detail=True, methods=["get"], url_path="semesters")

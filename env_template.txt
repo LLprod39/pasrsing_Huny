@@ -62,6 +62,8 @@ CORS_ALLOW_ALL_ORIGINS=1
 # Celery/Redis
 CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/0
+# Если поставить 1 — Celery будет выполнять задачи синхронно в процессе Django (только для dev/отладки)
+CELERY_TASK_ALWAYS_EAGER=0
 
 # Ключ шифрования для Synergy-паролей студентов (обязательно в проде!)
 # Должен быть стабильным и секретным. Например base64-строка.

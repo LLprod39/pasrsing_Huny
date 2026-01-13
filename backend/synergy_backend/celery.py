@@ -20,3 +20,5 @@ app = Celery("synergy_backend")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
+# Make this Celery app the default one used by shared_task()/delay()
+app.set_default()

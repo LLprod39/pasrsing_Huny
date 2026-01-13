@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from apps.jobs.models import Job, JobStatus, JobType
 from apps.jobs.serializers import JobSerializer
-from apps.jobs.tasks import synergy_process_material_job, synergy_solve_test_job
+from apps.jobs.enqueue import enqueue_job
 
 from .models import Material
 from .serializers import MaterialSerializer
@@ -26,9 +26,7 @@ class MaterialViewSet(viewsets.ReadOnlyModelViewSet):
             params={"material_id": material.id},
             result=None,
         )
-        async_result = synergy_process_material_job.delay(str(job.id))
-        job.celery_task_id = async_result.id
-        job.save(update_fields=["celery_task_id", "updated_at"])
+        enqueue_job(job)
         return Response(JobSerializer(job).data, status=status.HTTP_202_ACCEPTED)
 
     @action(detail=True, methods=["post"], url_path="solve_test")
@@ -41,8 +39,6 @@ class MaterialViewSet(viewsets.ReadOnlyModelViewSet):
             params={"material_id": material.id},
             result=None,
         )
-        async_result = synergy_solve_test_job.delay(str(job.id))
-        job.celery_task_id = async_result.id
-        job.save(update_fields=["celery_task_id", "updated_at"])
+        enqueue_job(job)
         return Response(JobSerializer(job).data, status=status.HTTP_202_ACCEPTED)
 

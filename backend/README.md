@@ -93,6 +93,30 @@ cd backend
 celery -A synergy_backend worker -l info -P solo
 ```
 
+### 6.1. Если jobs остаются в PENDING (самая частая причина)
+- Убедитесь, что **Redis запущен** и доступен на `localhost:6379`
+- Убедитесь, что **Celery worker запущен** отдельным процессом
+- Проверьте `.env`:
+
+```env
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+```
+
+Проверка Redis:
+
+```bash
+python -c "import redis; r=redis.Redis(host='localhost', port=6379, db=0); print(r.ping())"
+```
+
+Если Redis/worker пока не хотите ставить (dev), можно временно включить синхронный режим:
+
+```env
+CELERY_TASK_ALWAYS_EAGER=1
+```
+
+В этом режиме задачи выполняются в процессе Django (подходит только для отладки).
+
 #### Linux/macOS:
 
 ```bash
