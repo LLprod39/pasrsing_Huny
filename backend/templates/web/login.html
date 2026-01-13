@@ -1,0 +1,28 @@
+{% extends "web/base.html" %}
+
+{% block title %}Вход - Synergy Bot{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card p-4">
+            <h2 class="mb-4">Вход</h2>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Email или ID</label>
+                    {{ form.identifier }}
+                    {% if form.identifier.errors %}
+                        <div class="text-danger small">{{ form.identifier.errors }}</div>
+                    {% endif %}
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Войти</button>
+            </form>
+            <hr>
+            <p class="text-center text-muted">
+                Нет аккаунта? <a href="{% url 'web:register' %}">Зарегистрироваться</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

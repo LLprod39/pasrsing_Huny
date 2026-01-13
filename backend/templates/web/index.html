@@ -1,0 +1,42 @@
+{% extends "web/base.html" %}
+
+{% block title %}Главная - Synergy Bot{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card text-center p-5 mb-4">
+            <h1 class="display-4 mb-4">Добро пожаловать в Synergy Bot</h1>
+            <p class="lead text-muted mb-4">Автоматизация обучения в LMS Synergy</p>
+            {% if not student %}
+                <div class="d-flex gap-3 justify-content-center">
+                    <a href="{% url 'web:login' %}" class="btn btn-primary btn-lg">Войти</a>
+                    <a href="{% url 'web:register' %}" class="btn btn-outline-primary btn-lg">Регистрация</a>
+                </div>
+            {% else %}
+                <a href="{% url 'web:dashboard' %}" class="btn btn-primary btn-lg">Личный кабинет</a>
+            {% endif %}
+        </div>
+
+        {% if plans %}
+        <div class="card p-4">
+            <h3 class="mb-4">Доступные тарифы</h3>
+            <div class="row g-3">
+                {% for plan in plans %}
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ plan.name }}</h5>
+                            <p class="text-muted">{{ plan.description|default:"" }}</p>
+                            <h3 class="text-primary">{{ plan.price_cents|floatformat:0|default:0 }} ₽</h3>
+                            <small class="text-muted">на {{ plan.duration_days }} дней</small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

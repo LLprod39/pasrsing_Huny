@@ -1,0 +1,25 @@
+{% extends "web/base.html" %}
+
+{% block title %}Профиль - Synergy Bot{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Профиль</h2>
+<div class="card p-4">
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Имя</label>
+            <input type="text" name="full_name" class="form-control" value="{{ student.full_name }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" value="{{ student.email }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Телефон</label>
+            <input type="text" name="phone" class="form-control" value="{{ student.phone }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+    </form>
+</div>
+{% endblock %}

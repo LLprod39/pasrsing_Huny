@@ -1,0 +1,42 @@
+{% extends "web/base.html" %}
+
+{% block title %}Подписки - Synergy Bot{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Мои подписки</h2>
+<div class="card p-4">
+    {% if subscriptions %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Тариф</th>
+                    <th>Статус</th>
+                    <th>Начало</th>
+                    <th>Окончание</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in subscriptions %}
+                <tr>
+                    <td>{{ sub.plan.name }}</td>
+                    <td>
+                        {% if sub.status == 'active' %}
+                            <span class="badge bg-success">{{ sub.get_status_display }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ sub.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ sub.starts_at|date:"d.m.Y" }}</td>
+                    <td>{{ sub.ends_at|date:"d.m.Y" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">Нет подписок</p>
+    <a href="{% url 'web:plans' %}" class="btn btn-primary">Выбрать тариф</a>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "web/base.html" %}
+
+{% block title %}Задачи - Synergy Bot{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Задачи синхронизации</h2>
+<div class="card p-4">
+    {% if jobs %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Тип</th>
+                    <th>Статус</th>
+                    <th>Прогресс</th>
+                    <th>Создано</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td>{{ job.get_type_display }}</td>
+                    <td>
+                        {% if job.status == 'completed' %}
+                            <span class="badge bg-success">{{ job.get_status_display }}</span>
+                        {% elif job.status == 'failed' %}
+                            <span class="badge bg-danger">{{ job.get_status_display }}</span>
+                        {% elif job.status == 'running' %}
+                            <span class="badge bg-warning">{{ job.get_status_display }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ job.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" style="width: {{ job.progress|default:0 }}%">{{ job.progress|default:0 }}%</div>
+                        </div>
+                    </td>
+                    <td>{{ job.created_at|date:"d.m.Y H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">Нет задач</p>
+    {% endif %}
+</div>
+{% endblock %}

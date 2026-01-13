@@ -70,7 +70,7 @@ ROOT_URLCONF = "synergy_backend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [str(BACKEND_DIR / "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
