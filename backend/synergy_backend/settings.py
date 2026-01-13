@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "apps.jobs",
     "apps.billing",
     "apps.bot",
+    "apps.web",
 ]
 
 
@@ -212,3 +213,4 @@ UNFOLD = {
         ],
     },
 }
+

@@ -1,0 +1,74 @@
+{% extends "web/base.html" %}
+
+{% block title %}Шаг 3 — Материалы{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="mb-0">Шаг 3 — Материалы</h2>
+      <a class="btn btn-outline-secondary" href="{% url 'web:flow_courses' %}">Назад: курсы</a>
+    </div>
+
+    <div class="card p-4 mb-3">
+      <div class="mb-2">
+        <strong>Курс:</strong> {{ course.name }}
+      </div>
+      <form method="post" class="d-flex gap-2 flex-wrap">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="sync" />
+        <button class="btn btn-outline-primary">
+          <i class="bi bi-arrow-repeat"></i> Синхронизировать материалы
+        </button>
+        <a class="btn btn-outline-secondary" href="{% url 'web:jobs' %}">Открыть jobs</a>
+      </form>
+      <p class="text-muted mt-3 mb-0">
+        После синхронизации вы можете выбрать материалы вручную или нажать «Авто: пройти всё».
+      </p>
+    </div>
+
+    <div class="card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Материалы</h5>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="auto_all" />
+          <button class="btn btn-primary">
+            <i class="bi bi-magic"></i> Авто: пройти всё
+          </button>
+        </form>
+      </div>
+
+      {% if materials %}
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            {{ form.material_ids }}
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-primary" name="action" value="process_selected">
+              <i class="bi bi-play-circle"></i> Обработать выбранные (видео/материалы)
+            </button>
+            <button class="btn btn-outline-success" name="action" value="solve_selected">
+              <i class="bi bi-check2-circle"></i> Решить выбранные тесты
+            </button>
+          </div>
+          <div class="form-text mt-2">
+            Подсказка: тесты обычно имеют тип <code>test</code>.
+          </div>
+        </form>
+
+        <hr/>
+        <h6>Справка по типам</h6>
+        <ul class="text-muted mb-0">
+          <li><strong>video/material/pdf</strong> — будет поставлена задача <code>process_material</code></li>
+          <li><strong>test</strong> — будет поставлена задача <code>solve_test</code></li>
+        </ul>
+      {% else %}
+        <p class="text-muted mb-0">Материалы ещё не загружены. Нажмите «Синхронизировать материалы».</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+

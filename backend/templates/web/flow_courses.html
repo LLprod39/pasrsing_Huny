@@ -1,0 +1,65 @@
+{% extends "web/base.html" %}
+
+{% block title %}Шаг 2 — Курс{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="mb-0">Шаг 2 — Курс (семестр {{ semester_number }})</h2>
+      <a class="btn btn-outline-secondary" href="{% url 'web:flow_semesters' %}">Назад: семестр</a>
+    </div>
+
+    <div class="card p-4 mb-3">
+      <form method="post" class="d-flex gap-2 flex-wrap">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="sync" />
+        <button class="btn btn-outline-primary">
+          <i class="bi bi-arrow-repeat"></i> Синхронизировать курсы
+        </button>
+        <a class="btn btn-outline-secondary" href="{% url 'web:jobs' %}">Открыть jobs</a>
+      </form>
+      <p class="text-muted mt-3 mb-0">
+        После синхронизации выберите курс, по которому нужно проходить материалы.
+      </p>
+    </div>
+
+    <div class="card p-4">
+      <h5 class="mb-3">Курсы</h5>
+
+      {% if courses %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="select" />
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Название</th>
+                  <th>Тип контроля</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in courses %}
+                  <tr>
+                    <td style="width:42px;">
+                      <input class="form-check-input" type="radio" name="course_id" value="{{ c.id }}" {% if selected_course_id == c.id %}checked{% endif %}/>
+                    </td>
+                    <td>{{ c.name }}</td>
+                    <td class="text-muted">{{ c.control_type }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <button class="btn btn-primary">Выбрать и продолжить</button>
+        </form>
+      {% else %}
+        <p class="text-muted mb-0">Курсы ещё не загружены. Нажмите «Синхронизировать курсы».</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,64 @@
+{% extends "web/base.html" %}
+
+{% block title %}Шаг 1 — Семестр{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="mb-0">Шаг 1 — Семестр</h2>
+      <a class="btn btn-outline-secondary" href="{% url 'web:dashboard' %}">Личный кабинет</a>
+    </div>
+
+    <div class="card p-4 mb-3">
+      <div class="d-flex gap-2 flex-wrap">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="sync" />
+          <button class="btn btn-outline-primary">
+            <i class="bi bi-arrow-repeat"></i> Синхронизировать семестры
+          </button>
+        </form>
+        <a class="btn btn-outline-secondary" href="{% url 'web:synergy_setup' %}">
+          <i class="bi bi-key"></i> Synergy логин/пароль
+        </a>
+      </div>
+      <p class="text-muted mt-3 mb-0">
+        Если у вас подписка на 1 семестр — он будет доступен только один и выберется автоматически.
+      </p>
+    </div>
+
+    <div class="card p-4">
+      <h5 class="mb-3">Доступные семестры</h5>
+
+      {% if semesters %}
+        {% if locked_single %}
+          <div class="alert alert-success">
+            Подписка ограничена одним семестром. Выбран семестр: <strong>{{ selected }}</strong>
+          </div>
+          <a class="btn btn-primary" href="{% url 'web:flow_courses' %}">Дальше: курсы</a>
+        {% else %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="select" />
+            <div class="list-group">
+              {% for n in semesters %}
+                <label class="list-group-item d-flex align-items-center gap-2">
+                  <input class="form-check-input" type="radio" name="semester_number" value="{{ n }}" {% if selected == n %}checked{% endif %}/>
+                  <span>Семестр {{ n }}</span>
+                </label>
+              {% endfor %}
+            </div>
+            <button class="btn btn-primary mt-3">Выбрать и продолжить</button>
+          </form>
+        {% endif %}
+      {% else %}
+        <p class="text-muted mb-0">
+          Семестры ещё не загружены. Нажмите «Синхронизировать семестры».
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+

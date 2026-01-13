@@ -53,6 +53,7 @@
                 <ul class="navbar-nav ms-auto">
                     {% if student %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'web:dashboard' %}"><i class="bi bi-speedometer2"></i> Личный кабинет</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'web:flow_semesters' %}"><i class="bi bi-stars"></i> Прохождение</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'web:plans' %}"><i class="bi bi-credit-card"></i> Тарифы</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'web:jobs' %}"><i class="bi bi-list-task"></i> Задачи</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'web:profile' %}"><i class="bi bi-person"></i> {{ student.full_name|default:student.email }}</a></li>

@@ -3,6 +3,7 @@ from __future__ import annotations
 from django import forms
 
 from apps.accounts.models import Student
+from apps.synergy.models import SynergyCredential
 
 
 class StudentLoginForm(forms.Form):
@@ -65,3 +66,56 @@ class StudentRegisterForm(forms.ModelForm):
         if external_id and Student.objects.filter(external_id=external_id).exists():
             raise forms.ValidationError("Студент с таким ID уже зарегистрирован")
         return external_id
+
+
+class SynergyCredentialWebForm(forms.Form):
+    """Ввод Synergy логина/пароля студентом (пароль только сохранить/обновить)."""
+
+    login = forms.CharField(
+        label="Логин Synergy",
+        max_length=255,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "email/логин от Synergy"}),
+    )
+    password = forms.CharField(
+        label="Пароль Synergy",
+        required=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "пароль (оставьте пустым, чтобы не менять)"}),
+    )
+
+    def save_for_student(self, *, student: Student) -> SynergyCredential:
+        login = (self.cleaned_data.get("login") or "").strip()
+        password = (self.cleaned_data.get("password") or "").strip()
+
+        cred, _ = SynergyCredential.objects.get_or_create(student=student, defaults={"login": login})
+        cred.login = login
+        if password:
+            cred.set_password(password)
+        cred.save()
+        return cred
+
+
+class SemesterSelectForm(forms.Form):
+    semester_number = forms.IntegerField(
+        label="Семестр",
+        min_value=1,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+    )
+
+
+class CourseSelectForm(forms.Form):
+    course_id = forms.IntegerField(
+        label="Курс",
+        min_value=1,
+        widget=forms.NumberInput(attrs={"class": "form-control"}),
+    )
+
+
+class MaterialsActionForm(forms.Form):
+    material_ids = forms.MultipleChoiceField(
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    def __init__(self, *args, choices: list[tuple[str, str]] | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["material_ids"].choices = choices or []
