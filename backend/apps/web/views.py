@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from django.contrib import messages
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+import stripe
 
 from apps.accounts.models import Student
-from apps.billing.models import Payment, Plan, Subscription, SubscriptionStatus
+from apps.billing.models import Payment, PaymentStatus, Plan, Subscription, SubscriptionStatus
 from apps.billing.services import has_access
+from apps.billing.services import mark_payment_succeeded
 from apps.jobs.models import Job, JobStatus
 from apps.jobs.models import JobType
 from apps.jobs.enqueue import enqueue_job
@@ -249,6 +252,77 @@ def plans(request: HttpRequest) -> HttpResponse:
         "plans": plans_list,
     }
     return render(request, "web/plans.html", context)
+
+
+@require_student_login
+def plan_pay(request: HttpRequest, plan_id: int) -> HttpResponse:
+    """Создать платеж для тарифа и (если нужно) отправить в Stripe.
+
+    Особый случай: если стоимость 0 — платеж проходит сразу и подписка активируется мгновенно.
+    """
+    if request.method != "POST":
+        return redirect("web:plans")
+
+    student: Student = request.student
+    plan = get_object_or_404(Plan, id=plan_id, is_active=True)
+
+    payment = Payment.objects.create(
+        student=student,
+        plan=plan,
+        status=PaymentStatus.PENDING,
+        amount_cents=plan.price_cents,
+        currency=plan.currency,
+        provider="stripe",
+    )
+
+    # Free plan => instant success without external provider
+    if int(plan.price_cents or 0) == 0:
+        mark_payment_succeeded(payment, raw={"note": "zero_amount_auto_succeed", "source": "web"})
+        messages.success(request, "Подписка активирована.")
+        return redirect("web:subscriptions")
+
+    if not settings.STRIPE_SECRET_KEY:
+        payment.status = PaymentStatus.FAILED
+        payment.raw = {"error": "STRIPE_SECRET_KEY not configured"}
+        payment.save(update_fields=["status", "raw", "updated_at"])
+        messages.error(request, "Оплата временно недоступна. Обратитесь к администратору.")
+        return redirect("web:plans")
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    try:
+        line_items: list[dict] = []
+        if plan.external_price_id:
+            line_items = [{"price": plan.external_price_id, "quantity": 1}]
+        else:
+            line_items = [
+                {
+                    "price_data": {
+                        "currency": plan.currency,
+                        "product_data": {"name": plan.name},
+                        "unit_amount": int(plan.price_cents),
+                    },
+                    "quantity": 1,
+                }
+            ]
+
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=line_items,
+            success_url=settings.STRIPE_SUCCESS_URL,
+            cancel_url=settings.STRIPE_CANCEL_URL,
+            metadata={"payment_id": str(payment.id), "student_id": str(student.id), "plan_id": str(plan.id)},
+        )
+        payment.provider_payment_id = session["id"]
+        payment.raw = session
+        payment.save(update_fields=["provider_payment_id", "raw", "updated_at"])
+        return redirect(session.get("url") or "web:plans")
+    except Exception as e:
+        payment.status = PaymentStatus.FAILED
+        payment.raw = {"error": str(e)}
+        payment.save(update_fields=["status", "raw", "updated_at"])
+        messages.error(request, "Не удалось создать оплату. Попробуйте позже.")
+        return redirect("web:plans")
 
 
 @require_student_login

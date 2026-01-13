@@ -23,9 +23,6 @@ class StripeCheckoutSessionCreateView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
-        if not settings.STRIPE_SECRET_KEY:
-            return Response({"detail": "STRIPE_SECRET_KEY not configured"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
         student_id = request.data.get("student_id")
         plan_id = request.data.get("plan_id")
 
@@ -46,6 +43,21 @@ class StripeCheckoutSessionCreateView(APIView):
             currency=plan.currency,
             provider="stripe",
         )
+
+        # If amount is 0, Stripe checkout isn't needed (and Stripe may reject 0-amount payments).
+        if int(plan.price_cents or 0) == 0:
+            sub = mark_payment_succeeded(payment, raw={"note": "zero_amount_auto_succeed"})
+            return Response(
+                {
+                    "status": "succeeded",
+                    "payment_id": payment.id,
+                    "checkout_url": None,
+                    "subscription_id": sub.id,
+                }
+            )
+
+        if not settings.STRIPE_SECRET_KEY:
+            return Response({"detail": "STRIPE_SECRET_KEY not configured"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         stripe.api_key = settings.STRIPE_SECRET_KEY
 

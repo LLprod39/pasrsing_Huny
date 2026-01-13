@@ -16,6 +16,7 @@ urlpatterns = [
     path("subscriptions/", views.subscriptions, name="subscriptions"),
     path("payments/", views.payments, name="payments"),
     path("plans/", views.plans, name="plans"),
+    path("plans/<int:plan_id>/pay/", views.plan_pay, name="plan_pay"),
     path("jobs/", views.jobs, name="jobs"),
     # Flow like CLI
     path("synergy/", views.synergy_setup, name="synergy_setup"),

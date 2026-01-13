@@ -10,7 +10,8 @@ if (-not (Test-Path "..\.env")) {
 }
 
 # Проверка миграций
-Write-Host "`n[1/4] Проверка миграций..." -ForegroundColor Cyan
+Write-Host ""
+Write-Host "[1/4] Проверка миграций..." -ForegroundColor Cyan
 python manage.py migrate --check 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Применяю миграции..." -ForegroundColor Yellow
@@ -23,7 +24,8 @@ $superuser_count = python manage.py shell -c "from django.contrib.auth import ge
 if ($superuser_count -eq "0") {
     Write-Host "Суперпользователь не найден. Создайте его командой:" -ForegroundColor Yellow
     Write-Host "  python manage.py createsuperuser" -ForegroundColor White
-    Write-Host "`nПродолжить без суперпользователя? (y/n): " -NoNewline -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Продолжить без суперпользователя? (y/n): " -NoNewline -ForegroundColor Yellow
     $response = Read-Host
     if ($response -ne "y") {
         exit 0
@@ -46,9 +48,12 @@ try {
 
 # Запуск сервера
 Write-Host "[4/4] Запуск Django сервера..." -ForegroundColor Cyan
-Write-Host "`n=== Сервер запущен ===" -ForegroundColor Green
+Write-Host ""
+Write-Host "=== Сервер запущен ===" -ForegroundColor Green
 Write-Host "Admin: http://localhost:8000/admin/" -ForegroundColor White
 Write-Host "API Docs: http://localhost:8000/api/v1/docs/" -ForegroundColor White
-Write-Host "`nДля остановки нажмите Ctrl+C`n" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Для остановки нажмите Ctrl+C" -ForegroundColor Yellow
+Write-Host ""
 
 python manage.py runserver 0.0.0.0:8000

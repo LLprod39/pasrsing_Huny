@@ -18,7 +18,9 @@ try {
     exit 1
 }
 
-Write-Host "`nЗапуск Celery Worker (solo pool для Windows)..." -ForegroundColor Cyan
-Write-Host "Для остановки нажмите Ctrl+C`n" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Запуск Celery Worker (solo pool для Windows)..." -ForegroundColor Cyan
+Write-Host "Для остановки нажмите Ctrl+C" -ForegroundColor Yellow
+Write-Host ""
 
-celery -A synergy_backend worker -l info -P solo
+python -m celery -A synergy_backend worker -l info -P solo
