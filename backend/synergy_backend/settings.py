@@ -3,15 +3,23 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 # ===== Paths =====
 BACKEND_DIR = Path(__file__).resolve().parent.parent  # .../backend
 REPO_ROOT = BACKEND_DIR.parent  # repo root (contains synergy_lms/)
 
+# Load `.env` automatically (same repo behavior as the parser scripts).
+# This fixes common dev issues where DJANGO_DEBUG etc. are present in `.env`
+# but not exported into the process environment.
+load_dotenv(dotenv_path=str(REPO_ROOT / '.env'), override=False)
+load_dotenv(dotenv_path=str(BACKEND_DIR / '.env'), override=False)
+
 
 # ===== Core settings =====
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-insecure-secret-key-change-me")
-DEBUG = os.environ.get("DJANGO_DEBUG", "0").strip() in {"1", "true", "True", "yes", "YES"}
+DEBUG = os.environ.get("DJANGO_DEBUG", "0").strip() in {"1", "true", "True", "TRUE", "yes", "YES"}
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",") if h.strip()]
 
