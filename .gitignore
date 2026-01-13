@@ -48,3 +48,9 @@ reports/
 profiles/
 artifacts/
 data/
+
+# Django backend
+backend/db.sqlite3
+backend/staticfiles/
+backend/.pytest_cache/
+

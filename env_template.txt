@@ -43,3 +43,33 @@ LOG_FILE=logs/parser.log
 # Артефакты/отладка (опционально)
 DEBUG_HTML_DIR=artifacts/debug_html
 DEBUG_NDJSON_LOG=logs/agent_debug.ndjson
+
+# ===== Django backend (admin + API) =====
+# Секрет Django (обязательно поменяйте в проде)
+DJANGO_SECRET_KEY=dev-insecure-secret-key-change-me
+# 1 = DEBUG, 0 = production-like
+DJANGO_DEBUG=1
+# Можно указать список хостов через запятую (в проде не ставьте "*")
+DJANGO_ALLOWED_HOSTS=*
+
+# Postgres (рекомендуется). Если не задано — будет sqlite в backend/db.sqlite3
+# Пример: postgres://user:pass@localhost:5432/synergy
+DATABASE_URL=
+
+# CORS (для отдельного фронта/бота)
+CORS_ALLOW_ALL_ORIGINS=1
+
+# Celery/Redis
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+
+# Ключ шифрования для Synergy-паролей студентов (обязательно в проде!)
+# Должен быть стабильным и секретным. Например base64-строка.
+CREDENTIAL_ENCRYPTION_KEY=
+
+# ===== Stripe (оплата) =====
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+# Куда Stripe редиректит после оплаты/отмены (можно на сайт/страницу бота)
+STRIPE_SUCCESS_URL=http://localhost:8000/admin/
+STRIPE_CANCEL_URL=http://localhost:8000/admin/

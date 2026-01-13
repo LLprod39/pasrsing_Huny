@@ -20,3 +20,24 @@ pydantic>=2.0.0,<3
 
 # Для работы с Gemini AI
 google-genai>=0.2.0
+
+# ===== Backend (Django + DRF + Admin + Celery) =====
+django>=5.0,<6
+djangorestframework>=3.15.0
+djangorestframework-simplejwt>=5.3.1
+drf-spectacular>=0.27.0
+django-cors-headers>=4.3.0
+
+# Celery + Redis
+celery>=5.4.0
+redis>=5.0.0
+
+# Database helpers (Postgres via DATABASE_URL)
+dj-database-url>=2.1.0
+psycopg2-binary>=2.9.9
+
+# Encryption (for per-student Synergy credentials)
+cryptography>=41.0.0
+
+# Payments (Stripe; optional for now, will be used for billing integration)
+stripe>=8.0.0

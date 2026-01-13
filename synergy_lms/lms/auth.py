@@ -1,5 +1,6 @@
 """Модуль авторизации на LMS Synergy"""
 import time
+from typing import Optional
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -76,11 +77,22 @@ class AuthManager:
             logger.error(f"Ошибка при создании WebDriver: {e}")
             raise
     
-    def login(self) -> bool:
-        """Выполнить авторизацию на сайте"""
+    def login(self, login: Optional[str] = None, password: Optional[str] = None) -> bool:
+        """Выполнить авторизацию на сайте.
+
+        По умолчанию берёт LOGIN/PASSWORD из `synergy_lms.config.Config`.
+        Но для backend/бота (per-student) можно передать креденшелы явно.
+        """
         if not self.driver:
             self.driver = self.create_driver()
         
+        login_value = (login or Config.LOGIN or "").strip()
+        password_value = (password or Config.PASSWORD or "").strip()
+        if not login_value or not password_value:
+            logger.error("Не заданы креденшелы для авторизации (login/password пустые)")
+            self.is_authenticated = False
+            return False
+
         try:
             logger.info(f"Открываем страницу авторизации: {Config.LOGIN_URL}")
             self.driver.get(Config.LOGIN_URL)
@@ -107,9 +119,9 @@ class AuthManager:
             
             # Вводим данные быстро
             username_input.clear()
-            username_input.send_keys(Config.LOGIN)
+            username_input.send_keys(login_value)
             password_input.clear()
-            password_input.send_keys(Config.PASSWORD)
+            password_input.send_keys(password_value)
             
             # Сразу нажимаем кнопку входа
             login_button.click()
