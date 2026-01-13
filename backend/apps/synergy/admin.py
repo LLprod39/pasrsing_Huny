@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from django.contrib import admin
 
+from unfold.admin import ModelAdmin
+
 from apps.jobs.models import Job, JobStatus, JobType
 from apps.jobs.tasks import (
     synergy_process_material_job,
@@ -15,17 +17,20 @@ from .models import Course, Material, Semester, SynergyCredential
 
 
 @admin.register(SynergyCredential)
-class SynergyCredentialAdmin(admin.ModelAdmin):
+class SynergyCredentialAdmin(ModelAdmin):
     form = SynergyCredentialForm
     list_display = ("id", "student", "login", "has_password", "last_validated_at", "updated_at")
     search_fields = ("login", "student__full_name", "student__email", "student__external_id")
+    autocomplete_fields = ("student",)
 
 
 @admin.register(Semester)
-class SemesterAdmin(admin.ModelAdmin):
+class SemesterAdmin(ModelAdmin):
     list_display = ("id", "student", "number", "updated_at")
     list_filter = ("number",)
+    list_filter_submit = True
     search_fields = ("student__full_name", "student__email", "student__external_id")
+    autocomplete_fields = ("student",)
     actions = ("queue_sync_courses",)
 
     @admin.action(description="Synergy: синхронизировать курсы (для выбранных семестров)")
@@ -47,10 +52,13 @@ class SemesterAdmin(admin.ModelAdmin):
 
 
 @admin.register(Course)
-class CourseAdmin(admin.ModelAdmin):
+class CourseAdmin(ModelAdmin):
     list_display = ("id", "student", "semester_number", "name", "control_type", "updated_at")
     list_filter = ("semester_number", "control_type")
+    list_filter_submit = True
     search_fields = ("name", "url", "student__full_name", "student__email")
+    autocomplete_fields = ("student",)
+    list_select_related = ("student",)
     actions = ("queue_sync_materials",)
 
     @admin.action(description="Synergy: синхронизировать материалы (для выбранных курсов)")
@@ -72,10 +80,13 @@ class CourseAdmin(admin.ModelAdmin):
 
 
 @admin.register(Material)
-class MaterialAdmin(admin.ModelAdmin):
+class MaterialAdmin(ModelAdmin):
     list_display = ("id", "student", "course", "type", "name", "is_blocked", "last_processed_at", "updated_at")
     list_filter = ("type", "is_blocked")
+    list_filter_submit = True
     search_fields = ("name", "url", "course__name", "student__full_name", "student__email")
+    autocomplete_fields = ("student", "course")
+    list_select_related = ("student", "course")
     actions = ("queue_process_material", "queue_solve_test")
 
     @admin.action(description="Synergy: обработать материал (создать Job)")

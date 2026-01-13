@@ -31,6 +31,8 @@ LANGUAGE_CODE = os.environ.get("DJANGO_LANGUAGE_CODE", "ru-ru")
 
 # ===== Apps =====
 INSTALLED_APPS = [
+    # Admin UI theme (must be before django.contrib.admin)
+    "unfold",
     # Django
     "django.contrib.admin",
     "django.contrib.auth",
@@ -145,3 +147,68 @@ CELERY_TIMEZONE = TIME_ZONE
 # For production set a stable value; for local dev we can derive if missing.
 CREDENTIAL_ENCRYPTION_KEY = os.environ.get("CREDENTIAL_ENCRYPTION_KEY", "").strip()
 
+
+
+# ===== Admin UI (Unfold) =====
+UNFOLD = {
+    "SITE_TITLE": "Synergy Admin",
+    "SITE_HEADER": "Synergy Bot",
+    "SITE_SYMBOL": "smart_toy",
+    "SITE_SUBHEADER": "Студенты • доступы • синхронизация • платежи",
+    "SITE_URL": "/admin/",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": False,
+    "SIDEBAR": {
+        "show_search": True,
+        "command_search": True,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": "Основное",
+                "separator": False,
+                "collapsible": False,
+                "items": [
+                    {"title": "Студенты", "icon": "school", "link": "/admin/accounts/student/"},
+                    {
+                        "title": "Jobs",
+                        "icon": "playlist_add_check",
+                        "link": "/admin/jobs/job/",
+                        "badge": "synergy_backend.unfold_badges.pending_jobs_badge",
+                        "badge_variant": "warning",
+                        "badge_style": "solid",
+                    },
+                ],
+            },
+            {
+                "title": "Synergy LMS",
+                "separator": True,
+                "collapsible": True,
+                "items": [
+                    {"title": "Креды Synergy", "icon": "key", "link": "/admin/synergy/synergycredential/"},
+                    {"title": "Семестры", "icon": "calendar_month", "link": "/admin/synergy/semester/"},
+                    {"title": "Курсы", "icon": "menu_book", "link": "/admin/synergy/course/"},
+                    {"title": "Материалы", "icon": "description", "link": "/admin/synergy/material/"},
+                ],
+            },
+            {
+                "title": "Billing",
+                "separator": True,
+                "collapsible": True,
+                "items": [
+                    {"title": "Планы", "icon": "sell", "link": "/admin/billing/plan/"},
+                    {"title": "Подписки", "icon": "verified", "link": "/admin/billing/subscription/"},
+                    {"title": "Платежи", "icon": "payments", "link": "/admin/billing/payment/"},
+                    {"title": "Webhooks", "icon": "webhook", "link": "/admin/billing/webhookevent/"},
+                ],
+            },
+            {
+                "title": "Настройки",
+                "separator": True,
+                "collapsible": True,
+                "items": [
+                    {"title": "Настройки бота", "icon": "smart_toy", "link": "/admin/bot/botconfig/"},
+                ],
+            },
+        ],
+    },
+}
