@@ -3,40 +3,151 @@
 {% block title %}Synergy доступ - Synergy Bot{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-7">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h2 class="mb-0">Synergy доступ</h2>
-      <a class="btn btn-outline-secondary" href="{% url 'web:dashboard' %}">Назад</a>
+<div class="max-w-2xl mx-auto">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8" data-aos="fade-up">
+    <div class="flex items-center gap-4">
+      <div
+        class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
+        <i class="bi bi-shield-lock text-white text-2xl"></i>
+      </div>
+      <div>
+        <h1 class="text-2xl md:text-3xl font-display font-bold">Synergy доступ</h1>
+        <p class="text-base-content/60">Настройка подключения к LMS</p>
+      </div>
     </div>
+    <a href="{% url 'web:dashboard' %}" class="btn btn-ghost btn-circle">
+      <i class="bi bi-x-lg text-xl"></i>
+    </a>
+  </div>
 
-    <div class="card p-4 mb-3">
-      <p class="text-muted mb-3">
-        Чтобы бот мог работать, нужно указать ваш логин/пароль от LMS Synergy. Пароль хранится в зашифрованном виде.
+  <!-- Info Alert -->
+  <div class="alert glass border border-info/30 mb-8" data-aos="fade-up" data-aos-delay="100">
+    <i class="bi bi-shield-check text-info text-xl"></i>
+    <div>
+      <p class="text-base-content/80 text-sm">
+        Для работы бота необходимо указать ваши учетные данные от LMS Synergy.
+        <span class="text-info font-medium">Мы храним пароль в зашифрованном виде</span> и используем его только для
+        авторизации от вашего имени.
       </p>
-      <form method="post">
+    </div>
+  </div>
+
+  <!-- Form Card -->
+  <div class="card glass" data-aos="fade-up" data-aos-delay="150">
+    <div class="card-body p-8">
+      <form method="post" class="space-y-6">
         {% csrf_token %}
-        <div class="mb-3">
-          <label class="form-label">Логин Synergy</label>
-          {{ form.login }}
+
+        <!-- Login -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium text-base">
+              <i class="bi bi-person-badge mr-2 text-brand-400"></i>
+              Логин Synergy
+            </span>
+          </label>
+          <input type="text" name="login"
+            class="input input-bordered input-lg bg-base-200/50 focus:bg-base-200 input-glow"
+            value="{{ form.login.value|default:'' }}" placeholder="Ваш логин от Synergy LMS" required>
         </div>
-        <div class="mb-3">
-          <label class="form-label">Пароль Synergy</label>
-          {{ form.password }}
-          <div class="form-text">Оставьте пустым, если не хотите менять пароль.</div>
+
+        <!-- Password -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium text-base">
+              <i class="bi bi-key mr-2 text-amber-400"></i>
+              Пароль Synergy
+            </span>
+          </label>
+          <input type="password" name="password"
+            class="input input-bordered input-lg bg-base-200/50 focus:bg-base-200 input-glow"
+            placeholder="••••••••••••">
+          <label class="label">
+            <span class="label-text-alt text-base-content/50">
+              <i class="bi bi-info-circle mr-1"></i>
+              Оставьте пустым, если не хотите менять пароль
+            </span>
+          </label>
         </div>
-        <button class="btn btn-primary">Сохранить</button>
-        <a class="btn btn-outline-primary ms-2" href="{% url 'web:flow_semesters' %}">Дальше</a>
+
+        <!-- Actions -->
+        <div class="flex flex-col sm:flex-row gap-3 pt-4">
+          <button type="submit" class="btn btn-primary btn-lg btn-shine flex-1 gap-2 shadow-lg">
+            <i class="bi bi-save"></i>
+            Сохранить
+          </button>
+          <a href="{% url 'web:flow_semesters' %}" class="btn btn-outline btn-lg gap-2">
+            Продолжить
+            <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
       </form>
     </div>
+  </div>
 
-    {% if cred %}
-      <div class="alert alert-info">
-        Текущий логин: <strong>{{ cred.login }}</strong><br/>
-        Пароль задан: <strong>{% if cred.has_password %}Да{% else %}Нет{% endif %}</strong>
+  <!-- Current Status -->
+  {% if cred %}
+  <div class="card glass border border-success/30 mt-6" data-aos="fade-up" data-aos-delay="200">
+    <div class="card-body p-6">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-success/20 flex items-center justify-center">
+          <i class="bi bi-check-circle-fill text-success text-xl"></i>
+        </div>
+        <div class="flex-1">
+          <div class="text-xs uppercase tracking-wider text-base-content/50 font-bold mb-1">Текущий статус</div>
+          <div class="flex flex-wrap items-center gap-4">
+            <div>
+              <span class="text-base-content/60">Логин:</span>
+              <span class="font-mono font-bold text-info ml-1">{{ cred.login }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-base-content/60">Пароль:</span>
+              {% if cred.has_password %}
+              <div class="badge badge-success gap-1">
+                <i class="bi bi-check"></i> Установлен
+              </div>
+              {% else %}
+              <div class="badge badge-error gap-1">
+                <i class="bi bi-x"></i> Не установлен
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
       </div>
-    {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Help Tips -->
+  <div class="card glass mt-6" data-aos="fade-up" data-aos-delay="250">
+    <div class="card-body p-6">
+      <h3 class="font-bold mb-4 flex items-center gap-2">
+        <i class="bi bi-lightbulb text-amber-400"></i>
+        Полезные советы
+      </h3>
+      <div class="space-y-3 text-sm text-base-content/70">
+        <div class="flex items-start gap-3">
+          <div class="w-6 h-6 rounded-full bg-brand-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span class="text-brand-400 text-xs font-bold">1</span>
+          </div>
+          <p>Используйте те же данные, что и для входа на <span class="text-info font-medium">lms.synergy.ru</span></p>
+        </div>
+        <div class="flex items-start gap-3">
+          <div class="w-6 h-6 rounded-full bg-brand-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span class="text-brand-400 text-xs font-bold">2</span>
+          </div>
+          <p>Если вы забыли пароль, восстановите его через официальный сайт Synergy</p>
+        </div>
+        <div class="flex items-start gap-3">
+          <div class="w-6 h-6 rounded-full bg-brand-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span class="text-brand-400 text-xs font-bold">3</span>
+          </div>
+          <p>Ваши данные в безопасности — мы используем шифрование и никогда не передаём их третьим лицам</p>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
-

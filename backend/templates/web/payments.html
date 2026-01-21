@@ -3,41 +3,88 @@
 {% block title %}Платежи - Synergy Bot{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">История платежей</h2>
-<div class="card p-4">
-    {% if payments %}
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Тариф</th>
-                    <th>Сумма</th>
-                    <th>Статус</th>
-                    <th>Дата</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for payment in payments %}
-                <tr>
-                    <td>{{ payment.plan.name }}</td>
-                    <td>{{ payment.amount_cents|floatformat:0|default:0 }} {{ payment.currency|upper }}</td>
-                    <td>
-                        {% if payment.status == 'succeeded' %}
-                            <span class="badge bg-success">{{ payment.get_status_display }}</span>
-                        {% elif payment.status == 'failed' %}
-                            <span class="badge bg-danger">{{ payment.get_status_display }}</span>
-                        {% else %}
-                            <span class="badge bg-warning">{{ payment.get_status_display }}</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ payment.created_at|date:"d.m.Y H:i" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<!-- Header -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8" data-aos="fade-up">
+    <div>
+        <h1 class="text-3xl md:text-4xl font-display font-bold mb-2">
+            <i class="bi bi-receipt text-brand-400 mr-2"></i>
+            История платежей
+        </h1>
+        <p class="text-base-content/60">Все ваши транзакции в одном месте</p>
     </div>
-    {% else %}
-    <p class="text-muted">Нет платежей</p>
-    {% endif %}
+    <a href="{% url 'web:plans' %}" class="btn btn-primary btn-shine gap-2">
+        <i class="bi bi-plus-circle"></i>
+        Новый платёж
+    </a>
+</div>
+
+<!-- Payments Table -->
+<div class="card glass" data-aos="fade-up">
+    <div class="card-body p-6">
+        {% if payments %}
+        <div class="overflow-x-auto">
+            <table class="table">
+                <thead>
+                    <tr class="border-b border-base-content/10">
+                        <th class="bg-transparent text-base-content/60">Тариф</th>
+                        <th class="bg-transparent text-base-content/60">Сумма</th>
+                        <th class="bg-transparent text-base-content/60">Статус</th>
+                        <th class="bg-transparent text-base-content/60 text-right">Дата</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments %}
+                    <tr class="hover">
+                        <td>
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-brand-500/20 flex items-center justify-center">
+                                    <i class="bi bi-credit-card text-brand-400"></i>
+                                </div>
+                                <div class="font-medium">{{ payment.plan.name }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="font-mono font-bold text-lg">{{ payment.amount_cents|floatformat:0|default:0
+                                }}</span>
+                            <span class="text-base-content/50 ml-1">{{ payment.currency|upper }}</span>
+                        </td>
+                        <td>
+                            {% if payment.status == 'succeeded' %}
+                            <div class="badge badge-success gap-1 py-3">
+                                <i class="bi bi-check2"></i> {{ payment.get_status_display }}
+                            </div>
+                            {% elif payment.status == 'failed' %}
+                            <div class="badge badge-error gap-1 py-3">
+                                <i class="bi bi-x-lg"></i> {{ payment.get_status_display }}
+                            </div>
+                            {% else %}
+                            <div class="badge badge-warning gap-1 py-3">
+                                <i class="bi bi-clock"></i> {{ payment.get_status_display }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            <span class="font-mono text-base-content/60">{{ payment.created_at|date:"d.m.Y H:i"
+                                }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-16">
+            <div class="w-16 h-16 rounded-2xl bg-base-200 flex items-center justify-center mx-auto mb-4">
+                <i class="bi bi-receipt text-3xl text-base-content/30"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-2">Нет платежей</h3>
+            <p class="text-base-content/60 mb-6">Здесь будет отображаться история ваших платежей</p>
+            <a href="{% url 'web:plans' %}" class="btn btn-primary gap-2">
+                <i class="bi bi-credit-card"></i>
+                Выбрать тариф
+            </a>
+        </div>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}

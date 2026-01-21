@@ -1,0 +1,483 @@
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+:root {
+    /* Улучшенная цветовая палитра для читабельности */
+    --bg-main: #1a1f2e;
+    --bg-card: #242938;
+    --bg-card-hover: #2d3348;
+
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-light: #818cf8;
+
+    --accent: #a855f7;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+
+    /* Улучшенная читабельность текста */
+    --text-primary: #ffffff;
+    --text-secondary: #e2e8f0;
+    --text-muted: #cbd5e1;
+    --text-disabled: #94a3b8;
+
+    /* Границы и тени */
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-color-hover: rgba(255, 255, 255, 0.2);
+
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+    --card-radius: 12px;
+    --btn-radius: 8px;
+
+    --font-heading: 'Poppins', sans-serif;
+    --font-body: 'Inter', sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #1a1f2e 0%, #242938 100%);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding-top: 75px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Улучшенные заголовки */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+h1 {
+    font-size: 2.5rem;
+}
+
+h2 {
+    font-size: 2rem;
+}
+
+h3 {
+    font-size: 1.75rem;
+}
+
+h4 {
+    font-size: 1.5rem;
+}
+
+h5 {
+    font-size: 1.25rem;
+}
+
+h6 {
+    font-size: 1.1rem;
+}
+
+p {
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+/* Улучшенная навигация */
+.navbar {
+    background: rgba(26, 31, 46, 0.95) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 1rem 0;
+}
+
+.navbar-brand {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 1.5rem;
+    color: var(--text-primary) !important;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.navbar-brand i {
+    color: var(--primary);
+    font-size: 1.3em;
+}
+
+.nav-link {
+    font-weight: 500;
+    color: var(--text-muted) !important;
+    transition: all 0.2s ease;
+    padding: 0.6rem 1rem !important;
+    border-radius: var(--btn-radius);
+    font-size: 0.95rem;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    color: var(--text-primary) !important;
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.nav-link i {
+    margin-right: 0.5rem;
+    font-size: 1.1em;
+}
+
+/* Значительно улучшенные карточки */
+.card,
+.glass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+}
+
+.card:hover,
+.glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-color-hover);
+}
+
+.card-title {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--border-color);
+    padding: 1.25rem 1.5rem;
+}
+
+.card-footer {
+    background: transparent;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Улучшенные кнопки */
+.btn {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    padding: 0.65rem 1.5rem;
+    border-radius: var(--btn-radius);
+    transition: all 0.2s ease;
+    border: none;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary) 100%);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    transform: translateY(-2px);
+    color: white;
+}
+
+.btn-outline-primary {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+}
+
+.btn-outline-primary:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.btn-lg {
+    padding: 0.85rem 2.5rem;
+    font-size: 1.05rem;
+}
+
+.btn-sm {
+    padding: 0.45rem 1rem;
+    font-size: 0.875rem;
+}
+
+/* Статистика */
+.stat-card h3 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.stat-label {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+/* Алерты */
+.alert {
+    border-radius: var(--card-radius);
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--text-primary);
+}
+
+.alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--text-primary);
+}
+
+.alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: var(--text-primary);
+}
+
+.alert-info {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: var(--text-primary);
+}
+
+/* Улучшенные таблицы */
+.table {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.table th {
+    background: rgba(255, 255, 255, 0.03);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.075em;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border-color);
+    padding: 1rem 0.75rem;
+}
+
+.table td {
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+    padding: 1rem 0.75rem;
+    color: var(--text-secondary);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Улучшенные формы */
+.form-control {
+    background: rgba(36, 41, 56, 0.8);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--btn-radius);
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+}
+
+.form-control::placeholder {
+    color: var(--text-disabled);
+}
+
+.form-control:focus {
+    background: rgba(36, 41, 56, 1);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    color: var(--text-primary);
+    outline: none;
+}
+
+.form-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Утилиты */
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+.text-primary-gradient {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.text-gradient {
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-muted) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Улучшенные бейджи */
+.badge {
+    padding: 0.5em 0.9em;
+    font-weight: 600;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.badge.bg-success {
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: #34d399 !important;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge.bg-warning {
+    background: rgba(245, 158, 11, 0.15) !important;
+    color: #fbbf24 !important;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge.bg-danger {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge.bg-secondary {
+    background: rgba(148, 163, 184, 0.15) !important;
+    color: #cbd5e1 !important;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.badge.bg-info {
+    background: rgba(59, 130, 246, 0.15) !important;
+    color: #60a5fa !important;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* Progress bars */
+.progress {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+    border-radius: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+        padding-top: 70px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.75rem;
+    }
+
+    h3 {
+        font-size: 1.5rem;
+    }
+
+    .card-body {
+        padding: 1.25rem;
+    }
+
+    .btn {
+        font-size: 0.9rem;
+    }
+}
+
+/* Утилиты для цветов */
+.text-success {
+    color: var(--success) !important;
+}
+
+.text-warning {
+    color: var(--warning) !important;
+}
+
+.text-danger {
+    color: var(--danger) !important;
+}
+
+.text-info {
+    color: var(--info) !important;
+}
+
+.text-primary {
+    color: var(--primary) !important;
+}
+
+/* Дополнительные утилиты */
+.fw-medium {
+    font-weight: 500;
+}
+
+.fw-semibold {
+    font-weight: 600;
+}
+
+.fw-bold {
+    font-weight: 700;
+}
+
+.rounded-pill {
+    border-radius: 50rem !important;
+}
+
+.shadow-sm {
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.shadow {
+    box-shadow: var(--shadow-md) !important;
+}
+
+.shadow-lg {
+    box-shadow: var(--shadow-lg) !important;
+}

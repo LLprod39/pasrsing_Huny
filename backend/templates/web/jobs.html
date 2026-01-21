@@ -3,47 +3,241 @@
 {% block title %}Задачи - Synergy Bot{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Задачи синхронизации</h2>
-<div class="card p-4">
-    {% if jobs %}
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Тип</th>
-                    <th>Статус</th>
-                    <th>Прогресс</th>
-                    <th>Создано</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for job in jobs %}
-                <tr>
-                    <td>{{ job.get_type_display }}</td>
-                    <td>
-                        {% if job.status == 'completed' %}
-                            <span class="badge bg-success">{{ job.get_status_display }}</span>
-                        {% elif job.status == 'failed' %}
-                            <span class="badge bg-danger">{{ job.get_status_display }}</span>
-                        {% elif job.status == 'running' %}
-                            <span class="badge bg-warning">{{ job.get_status_display }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary">{{ job.get_status_display }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="progress" style="height: 20px;">
-                            <div class="progress-bar" style="width: {{ job.progress|default:0 }}%">{{ job.progress|default:0 }}%</div>
-                        </div>
-                    </td>
-                    <td>{{ job.created_at|date:"d.m.Y H:i" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<!-- Header -->
+<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8" data-aos="fade-up">
+    <div>
+        <h1 class="text-3xl md:text-4xl font-display font-bold mb-2">
+            <i class="bi bi-list-task text-brand-400 mr-2"></i>
+            Задачи синхронизации
+        </h1>
+        <p class="text-base-content/60">История выполнения фоновых процессов</p>
     </div>
-    {% else %}
-    <p class="text-muted">Нет задач</p>
-    {% endif %}
+    <button class="btn btn-outline btn-primary gap-2" onclick="location.reload()">
+        <i class="bi bi-arrow-clockwise"></i>
+        Обновить
+    </button>
 </div>
+
+<!-- Stats Overview -->
+{% if jobs %}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" data-aos="fade-up">
+    <!-- Total -->
+    <div class="card glass">
+        <div class="card-body p-4 flex-row items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-base-content/10 flex items-center justify-center">
+                <i class="bi bi-stack text-base-content/60 text-xl"></i>
+            </div>
+            <div>
+                <div class="text-2xl font-display font-bold">{{ total_jobs }}</div>
+                <div class="text-base-content/60 text-sm">Всего</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completed -->
+    <div class="card glass border-l-4 border-success">
+        <div class="card-body p-4 flex-row items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-success/20 flex items-center justify-center">
+                <i class="bi bi-check-circle-fill text-success text-xl"></i>
+            </div>
+            <div>
+                <div class="text-2xl font-display font-bold text-success">{{ completed_jobs }}</div>
+                <div class="text-base-content/60 text-sm">Выполнено</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Running -->
+    <div class="card glass border-l-4 border-warning">
+        <div class="card-body p-4 flex-row items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-warning/20 flex items-center justify-center">
+                <span class="loading loading-spinner loading-md text-warning"></span>
+            </div>
+            <div>
+                <div class="text-2xl font-display font-bold text-warning">{{ running_jobs }}</div>
+                <div class="text-base-content/60 text-sm">В процессе</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Failed -->
+    <div class="card glass border-l-4 border-error">
+        <div class="card-body p-4 flex-row items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-error/20 flex items-center justify-center">
+                <i class="bi bi-x-circle-fill text-error text-xl"></i>
+            </div>
+            <div>
+                <div class="text-2xl font-display font-bold text-error">{{ failed_jobs }}</div>
+                <div class="text-base-content/60 text-sm">Ошибки</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Jobs List -->
+<div class="card glass" data-aos="fade-up">
+    <div class="card-body p-0">
+        {% if jobs %}
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="table">
+                <thead>
+                    <tr class="border-b border-base-content/10">
+                        <th class="bg-transparent text-base-content/60 font-medium">Тип задачи</th>
+                        <th class="bg-transparent text-base-content/60 font-medium">Статус</th>
+                        <th class="bg-transparent text-base-content/60 font-medium">Прогресс</th>
+                        <th class="bg-transparent text-base-content/60 font-medium">Создано</th>
+                        <th class="bg-transparent text-base-content/60 font-medium text-right">Завершено</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                    <tr
+                        class="hover border-b border-base-content/5 {% if job.status == 'running' %}bg-warning/5{% endif %}">
+                        <td>
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500/20 to-purple-600/20 flex items-center justify-center">
+                                    <i
+                                        class="bi bi-{% if 'sync' in job.type %}arrow-repeat{% elif 'process' in job.type %}gear{% else %}list-task{% endif %} text-brand-400"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium">{{ job.get_type_display }}</div>
+                                    <div class="text-base-content/50 text-xs font-mono">#{{ job.id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if job.status == 'completed' %}
+                            <div class="badge badge-success gap-1 py-3 px-3">
+                                <i class="bi bi-check2"></i> {{ job.get_status_display }}
+                            </div>
+                            {% elif job.status == 'failed' %}
+                            <div class="badge badge-error gap-1 py-3 px-3">
+                                <i class="bi bi-x-lg"></i> {{ job.get_status_display }}
+                            </div>
+                            {% elif job.status == 'running' %}
+                            <div class="badge badge-warning gap-1 py-3 px-3">
+                                <span class="loading loading-spinner loading-xs"></span> {{ job.get_status_display }}
+                            </div>
+                            {% else %}
+                            <div class="badge badge-ghost py-3 px-3">{{ job.get_status_display }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="w-48">
+                            <div class="flex items-center gap-3">
+                                <progress
+                                    class="progress {% if job.status == 'completed' %}progress-success{% elif job.status == 'failed' %}progress-error{% else %}progress-primary{% endif %} w-full"
+                                    value="{{ job.progress|default:0 }}" max="100"></progress>
+                                <span class="text-sm font-mono text-base-content/60 w-12">{{ job.progress|default:0
+                                    }}%</span>
+                            </div>
+                        </td>
+                        <td class="text-base-content/60 text-sm font-mono">
+                            <i class="bi bi-calendar-plus mr-1"></i>
+                            {{ job.created_at|date:"d.m.Y H:i" }}
+                        </td>
+                        <td class="text-right text-base-content/60 text-sm font-mono">
+                            {% if job.updated_at and job.status == 'completed' %}
+                            <i class="bi bi-check-circle mr-1 text-success"></i>
+                            {{ job.updated_at|date:"d.m.Y H:i" }}
+                            {% else %}
+                            <span class="opacity-30">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Cards -->
+        <div class="md:hidden p-4 space-y-4">
+            {% for job in jobs %}
+            <div
+                class="card bg-base-200/50 {% if job.status == 'running' %}border-l-4 border-warning{% elif job.status == 'completed' %}border-l-4 border-success{% elif job.status == 'failed' %}border-l-4 border-error{% endif %}">
+                <div class="card-body p-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-brand-500/20 flex items-center justify-center">
+                                <i
+                                    class="bi bi-{% if 'sync' in job.type %}arrow-repeat{% elif 'process' in job.type %}gear{% else %}list-task{% endif %} text-brand-400"></i>
+                            </div>
+                            <div>
+                                <div class="font-medium">{{ job.get_type_display }}</div>
+                                <div class="text-xs text-base-content/50 font-mono">#{{ job.id }}</div>
+                            </div>
+                        </div>
+                        {% if job.status == 'completed' %}
+                        <div class="badge badge-success badge-sm gap-1">
+                            <i class="bi bi-check2"></i> Готово
+                        </div>
+                        {% elif job.status == 'failed' %}
+                        <div class="badge badge-error badge-sm gap-1">
+                            <i class="bi bi-x-lg"></i> Ошибка
+                        </div>
+                        {% elif job.status == 'running' %}
+                        <div class="badge badge-warning badge-sm gap-1">
+                            <span class="loading loading-spinner loading-xs"></span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex items-center gap-3 mb-2">
+                        <progress
+                            class="progress {% if job.status == 'completed' %}progress-success{% elif job.status == 'failed' %}progress-error{% else %}progress-primary{% endif %} flex-1 h-2"
+                            value="{{ job.progress|default:0 }}" max="100"></progress>
+                        <span class="text-sm font-mono">{{ job.progress|default:0 }}%</span>
+                    </div>
+
+                    <div class="text-xs text-base-content/50">
+                        {{ job.created_at|date:"d.m H:i" }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16">
+            <div class="w-20 h-20 rounded-2xl bg-base-200 flex items-center justify-center mx-auto mb-6">
+                <i class="bi bi-list-check text-4xl text-base-content/30"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-2">История задач пуста</h3>
+            <p class="text-base-content/60 mb-6">Здесь будут отображаться фоновые задачи синхронизации</p>
+            <a href="{% url 'web:flow_semesters' %}" class="btn btn-primary gap-2">
+                <i class="bi bi-play-circle"></i>
+                Начать прохождение
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Info Section -->
+{% if jobs %}
+<div class="card glass mt-6" data-aos="fade-up">
+    <div class="card-body p-6">
+        <div class="flex flex-col md:flex-row md:items-center gap-4">
+            <div class="flex items-start gap-4 flex-1">
+                <div class="w-10 h-10 rounded-xl bg-info/20 flex items-center justify-center flex-shrink-0">
+                    <i class="bi bi-info-circle text-info"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold mb-1">О задачах синхронизации</h3>
+                    <p class="text-base-content/60 text-sm">
+                        Задачи выполняются в фоновом режиме и синхронизируют данные с платформой Synergy.
+                        Страница автоматически не обновляется — используйте кнопку "Обновить".
+                    </p>
+                </div>
+            </div>
+            <div class="text-base-content/50 text-sm flex items-center gap-2">
+                <i class="bi bi-clock"></i>
+                Обновлено: <span class="font-mono font-medium">{% now "H:i" %}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

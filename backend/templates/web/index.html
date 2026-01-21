@@ -3,40 +3,266 @@
 {% block title %}Главная - Synergy Bot{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card text-center p-5 mb-4">
-            <h1 class="display-4 mb-4">Добро пожаловать в Synergy Bot</h1>
-            <p class="lead text-muted mb-4">Автоматизация обучения в LMS Synergy</p>
-            {% if not student %}
-                <div class="d-flex gap-3 justify-content-center">
-                    <a href="{% url 'web:login' %}" class="btn btn-primary btn-lg">Войти</a>
-                    <a href="{% url 'web:register' %}" class="btn btn-outline-primary btn-lg">Регистрация</a>
-                </div>
-            {% else %}
-                <a href="{% url 'web:dashboard' %}" class="btn btn-primary btn-lg">Личный кабинет</a>
-            {% endif %}
-        </div>
+<!-- Hero Section -->
+<div class="hero min-h-[80vh] relative">
+    <div class="hero-content text-center py-20">
+        <div class="max-w-4xl" data-aos="fade-up">
+            <!-- Badge -->
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8" data-aos="fade-up"
+                data-aos-delay="100">
+                <span class="relative flex h-2 w-2">
+                    <span
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <span class="text-sm font-medium text-base-content/80">Работает 24/7</span>
+            </div>
 
-        {% if plans %}
-        <div class="card p-4">
-            <h3 class="mb-4">Доступные тарифы</h3>
-            <div class="row g-3">
-                {% for plan in plans %}
-                <div class="col-md-4">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ plan.name }}</h5>
-                            <p class="text-muted">{{ plan.description|default:"" }}</p>
-                            <h3 class="text-primary">{{ plan.price_cents|floatformat:0|default:0 }} ₽</h3>
-                            <small class="text-muted">на {{ plan.duration_days }} дней</small>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
+            <!-- Main Title -->
+            <h1 class="text-5xl md:text-7xl font-display font-black mb-6 leading-tight">
+                <span class="gradient-text">Synergy</span>
+                <span class="text-white"> Bot</span>
+            </h1>
+
+            <!-- Subtitle -->
+            <p class="text-xl md:text-2xl text-base-content/70 mb-12 max-w-2xl mx-auto leading-relaxed"
+                data-aos="fade-up" data-aos-delay="200">
+                Автоматизируйте прохождение курсов в
+                <span class="text-brand-400 font-semibold">Synergy LMS</span>
+                с помощью интеллектуального бота
+            </p>
+
+            <!-- CTA Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center" data-aos="fade-up" data-aos-delay="300">
+                {% if not student %}
+                <a href="{% url 'web:register' %}"
+                    class="btn btn-primary btn-lg btn-shine gap-2 shadow-lg glow-primary">
+                    <i class="bi bi-rocket-takeoff"></i>
+                    Начать бесплатно
+                </a>
+                <a href="{% url 'web:login' %}" class="btn btn-outline btn-lg gap-2">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Войти
+                </a>
+                {% else %}
+                <a href="{% url 'web:dashboard' %}"
+                    class="btn btn-primary btn-lg btn-shine gap-2 shadow-lg glow-primary">
+                    <i class="bi bi-speedometer2"></i>
+                    Перейти в кабинет
+                </a>
+                <a href="{% url 'web:flow_semesters' %}" class="btn btn-outline btn-lg gap-2">
+                    <i class="bi bi-play-circle"></i>
+                    Начать прохождение
+                </a>
+                {% endif %}
             </div>
         </div>
-        {% endif %}
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="py-20">
+    <div class="text-center mb-16" data-aos="fade-up">
+        <h2 class="text-3xl md:text-4xl font-display font-bold mb-4">
+            Почему <span class="gradient-text">Synergy Bot</span>?
+        </h2>
+        <p class="text-base-content/60 text-lg max-w-xl mx-auto">
+            Современное решение для автоматизации вашего обучения
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Feature 1 -->
+        <div class="card glass card-hover" data-aos="fade-up" data-aos-delay="100">
+            <div class="card-body items-center text-center p-8">
+                <div
+                    class="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center mb-4 shadow-lg">
+                    <i class="bi bi-lightning-charge text-white text-2xl"></i>
+                </div>
+                <h3 class="card-title text-xl mb-2">Мгновенная скорость</h3>
+                <p class="text-base-content/60">
+                    Автоматическое прохождение материалов в несколько раз быстрее ручного
+                </p>
+            </div>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="card glass card-hover" data-aos="fade-up" data-aos-delay="200">
+            <div class="card-body items-center text-center p-8">
+                <div
+                    class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mb-4 shadow-lg">
+                    <i class="bi bi-shield-check text-white text-2xl"></i>
+                </div>
+                <h3 class="card-title text-xl mb-2">100% Безопасность</h3>
+                <p class="text-base-content/60">
+                    Ваши данные защищены шифрованием и используются только для авторизации
+                </p>
+            </div>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="card glass card-hover" data-aos="fade-up" data-aos-delay="300">
+            <div class="card-body items-center text-center p-8">
+                <div
+                    class="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-4 shadow-lg">
+                    <i class="bi bi-clock-history text-white text-2xl"></i>
+                </div>
+                <h3 class="card-title text-xl mb-2">Экономия времени</h3>
+                <p class="text-base-content/60">
+                    Освободите часы своего времени для более важных занятий
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Plans Section -->
+{% if plans %}
+<div class="py-20">
+    <div class="text-center mb-16" data-aos="fade-up">
+        <div class="badge badge-primary badge-outline mb-4">Тарифы</div>
+        <h2 class="text-3xl md:text-4xl font-display font-bold mb-4">
+            Выберите свой <span class="gradient-text-gold">план</span>
+        </h2>
+        <p class="text-base-content/60 text-lg">
+            Начните прямо сейчас — активация мгновенная
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        {% for plan in plans %}
+        <div class="card glass card-hover relative overflow-hidden group" data-aos="fade-up"
+            data-aos-delay="{{ forloop.counter0|add:1 }}00">
+            <!-- Popular badge for middle plan -->
+            {% if forloop.counter == 2 %}
+            <div class="absolute top-4 right-4">
+                <span class="badge badge-primary">Популярный</span>
+            </div>
+            {% endif %}
+
+            <div class="card-body p-8">
+                <!-- Plan Icon -->
+                <div
+                    class="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500/20 to-purple-600/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <i
+                        class="bi bi-{% if forloop.first %}shield-check{% elif forloop.counter == 2 %}star-fill{% else %}gem{% endif %} text-brand-400 text-2xl"></i>
+                </div>
+
+                <!-- Plan Name -->
+                <h3 class="text-xl font-bold mb-2">{{ plan.name }}</h3>
+
+                <!-- Price -->
+                <div class="flex items-baseline gap-1 mb-4">
+                    <span class="text-4xl font-display font-bold gradient-text">{{
+                        plan.price_cents|floatformat:0|default:0 }}</span>
+                    <span class="text-xl text-base-content/60">₽</span>
+                </div>
+
+                <!-- Duration -->
+                <p class="text-base-content/60 text-sm mb-6">
+                    <i class="bi bi-calendar3 mr-1"></i>
+                    {{ plan.duration_days }} дней доступа
+                </p>
+
+                <!-- Features -->
+                <ul class="space-y-3 mb-8 flex-grow">
+                    <li class="flex items-center gap-3 text-sm">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <span class="text-base-content/80">Автопрохождение материалов</span>
+                    </li>
+                    <li class="flex items-center gap-3 text-sm">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <span class="text-base-content/80">Синхронизация с LMS</span>
+                    </li>
+                    <li class="flex items-center gap-3 text-sm">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <span class="text-base-content/80">Отслеживание прогресса</span>
+                    </li>
+                    <li class="flex items-center gap-3 text-sm">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <span class="text-base-content/80">Техподдержка 24/7</span>
+                    </li>
+                </ul>
+
+                <!-- CTA -->
+                <a href="{% url 'web:plans' %}" class="btn btn-primary btn-block btn-shine">
+                    Выбрать план
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Stats Section -->
+<div class="py-20">
+    <div class="stats stats-vertical lg:stats-horizontal glass w-full shadow-xl" data-aos="fade-up">
+        <div class="stat place-items-center py-8">
+            <div class="stat-figure text-brand-500">
+                <i class="bi bi-people text-3xl"></i>
+            </div>
+            <div class="stat-title text-base-content/60">Пользователей</div>
+            <div class="stat-value text-4xl font-display counter" data-target="500">0</div>
+            <div class="stat-desc text-success">↗︎ Растём каждый день</div>
+        </div>
+
+        <div class="stat place-items-center py-8">
+            <div class="stat-figure text-purple-500">
+                <i class="bi bi-check2-all text-3xl"></i>
+            </div>
+            <div class="stat-title text-base-content/60">Материалов пройдено</div>
+            <div class="stat-value text-4xl font-display counter" data-target="25000">0</div>
+            <div class="stat-desc text-success">↗︎ И это только начало</div>
+        </div>
+
+        <div class="stat place-items-center py-8">
+            <div class="stat-figure text-amber-500">
+                <i class="bi bi-clock text-3xl"></i>
+            </div>
+            <div class="stat-title text-base-content/60">Часов сэкономлено</div>
+            <div class="stat-value text-4xl font-display counter" data-target="1200">0</div>
+            <div class="stat-desc text-success">↗︎ Ваше время — бесценно</div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA Section -->
+<div class="py-20">
+    <div class="card glass overflow-hidden" data-aos="fade-up">
+        <div class="card-body text-center py-16 px-8 relative">
+            <!-- Background decoration -->
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                <div
+                    class="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-brand-500/30 to-purple-600/30 rounded-full blur-3xl">
+                </div>
+                <div
+                    class="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-br from-cyan-500/30 to-blue-600/30 rounded-full blur-3xl">
+                </div>
+            </div>
+
+            <div class="relative z-10">
+                <h2 class="text-3xl md:text-4xl font-display font-bold mb-4">
+                    Готовы начать?
+                </h2>
+                <p class="text-base-content/60 text-lg mb-8 max-w-xl mx-auto">
+                    Присоединяйтесь к сотням студентов, которые уже экономят своё время
+                </p>
+                {% if not student %}
+                <a href="{% url 'web:register' %}"
+                    class="btn btn-primary btn-lg btn-shine gap-2 shadow-lg glow-primary">
+                    <i class="bi bi-rocket-takeoff"></i>
+                    Создать аккаунт бесплатно
+                </a>
+                {% else %}
+                <a href="{% url 'web:flow_semesters' %}"
+                    class="btn btn-primary btn-lg btn-shine gap-2 shadow-lg glow-primary">
+                    <i class="bi bi-play-circle"></i>
+                    Начать прохождение
+                </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

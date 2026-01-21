@@ -16,6 +16,16 @@ class Plan(models.Model):
     price_cents = models.PositiveIntegerField(default=0)
     duration_days = models.PositiveIntegerField(default=30)
 
+    courses_limit = models.PositiveIntegerField(default=0, help_text="Maximum number of courses/lessons (e.g. Philosophy, Math) that can be processed (0 = unlimited)")
+    semesters_limit = models.PositiveIntegerField(default=0, help_text="Maximum number of semesters that can be parsed (0 = unlimited)")
+    materials_limit = models.PositiveIntegerField(default=0, help_text="Maximum number of materials that can be processed (0 = unlimited)")
+    tests_limit = models.PositiveIntegerField(default=0, help_text="Maximum number of tests that can be solved (0 = unlimited)")
+
+    semesters_enabled = models.BooleanField(default=True, help_text="Allow parsing semesters in this plan")
+    courses_enabled = models.BooleanField(default=True, help_text="Allow processing courses/lessons in this plan")
+    materials_enabled = models.BooleanField(default=True, help_text="Allow processing materials in this plan")
+    tests_enabled = models.BooleanField(default=True, help_text="Allow solving tests in this plan")
+
     # For Stripe/other providers mapping (optional)
     external_price_id = models.CharField(max_length=255, blank=True, default="")
     metadata = models.JSONField(null=True, blank=True)
@@ -43,6 +53,11 @@ class Subscription(models.Model):
 
     # Optional: limit access to selected semesters (if empty => all)
     allowed_semester_numbers = models.JSONField(null=True, blank=True)
+
+    semesters_used = models.PositiveIntegerField(default=0)
+    courses_used = models.PositiveIntegerField(default=0)
+    materials_used = models.PositiveIntegerField(default=0)
+    tests_used = models.PositiveIntegerField(default=0)
 
     external_subscription_id = models.CharField(max_length=255, blank=True, default="")
 

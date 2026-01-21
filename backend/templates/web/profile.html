@@ -3,23 +3,139 @@
 {% block title %}Профиль - Synergy Bot{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Профиль</h2>
-<div class="card p-4">
-    <form method="post">
-        {% csrf_token %}
-        <div class="mb-3">
-            <label class="form-label">Имя</label>
-            <input type="text" name="full_name" class="form-control" value="{{ student.full_name }}">
+<div class="max-w-3xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center gap-6 mb-8" data-aos="fade-up">
+        <div
+            class="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center shadow-lg glow-primary">
+            <span class="text-white text-3xl font-bold">{{ student.full_name|first|upper|default:"U" }}</span>
         </div>
-        <div class="mb-3">
-            <label class="form-label">Email</label>
-            <input type="email" name="email" class="form-control" value="{{ student.email }}">
+        <div>
+            <h1 class="text-3xl font-display font-bold mb-1">Мой профиль</h1>
+            <p class="text-base-content/60">Управление личными данными</p>
         </div>
-        <div class="mb-3">
-            <label class="form-label">Телефон</label>
-            <input type="text" name="phone" class="form-control" value="{{ student.phone }}">
+    </div>
+
+    <!-- Profile Card -->
+    <div class="card glass" data-aos="fade-up" data-aos-delay="100">
+        <div class="card-body p-8">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Name -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">
+                                <i class="bi bi-person mr-2 text-brand-400"></i>
+                                Полное имя
+                            </span>
+                        </label>
+                        <input type="text" name="full_name"
+                            class="input input-bordered input-lg bg-base-200/50 focus:bg-base-200 input-glow"
+                            value="{{ student.full_name }}" placeholder="Иван Иванов">
+                    </div>
+
+                    <!-- Email -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">
+                                <i class="bi bi-envelope mr-2 text-purple-400"></i>
+                                Email
+                            </span>
+                        </label>
+                        <input type="email" name="email"
+                            class="input input-bordered input-lg bg-base-200/50 focus:bg-base-200 input-glow"
+                            value="{{ student.email }}" placeholder="example@mail.com">
+                    </div>
+                </div>
+
+                <!-- Phone -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">
+                            <i class="bi bi-phone mr-2 text-emerald-400"></i>
+                            Телефон
+                        </span>
+                    </label>
+                    <input type="tel" name="phone"
+                        class="input input-bordered input-lg bg-base-200/50 focus:bg-base-200 input-glow"
+                        value="{{ student.phone }}" placeholder="+7 (999) 123-45-67">
+                </div>
+
+                <!-- Submit -->
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="btn btn-primary btn-lg btn-shine gap-2 shadow-lg">
+                        <i class="bi bi-check2-circle"></i>
+                        Сохранить изменения
+                    </button>
+                </div>
+            </form>
         </div>
-        <button type="submit" class="btn btn-primary">Сохранить</button>
-    </form>
+    </div>
+
+    <!-- Additional Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6" data-aos="fade-up" data-aos-delay="200">
+        <a href="{% url 'web:synergy_setup' %}" class="card glass card-hover group cursor-pointer">
+            <div class="card-body p-6 flex-row items-center gap-4">
+                <div
+                    class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i class="bi bi-shield-lock text-white text-xl"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-bold">Synergy доступ</h3>
+                    <p class="text-base-content/60 text-sm">Настроить учётные данные LMS</p>
+                </div>
+                <i class="bi bi-chevron-right text-base-content/40 group-hover:translate-x-1 transition-transform"></i>
+            </div>
+        </a>
+
+        <a href="{% url 'web:subscriptions' %}" class="card glass card-hover group cursor-pointer">
+            <div class="card-body p-6 flex-row items-center gap-4">
+                <div
+                    class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i class="bi bi-credit-card text-white text-xl"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-bold">Мои подписки</h3>
+                    <p class="text-base-content/60 text-sm">История платежей и подписок</p>
+                </div>
+                <i class="bi bi-chevron-right text-base-content/40 group-hover:translate-x-1 transition-transform"></i>
+            </div>
+        </a>
+    </div>
+
+    <!-- Account Info -->
+    <div class="card glass mt-6" data-aos="fade-up" data-aos-delay="300">
+        <div class="card-body p-6">
+            <h3 class="font-bold mb-4 flex items-center gap-2">
+                <i class="bi bi-info-circle text-brand-400"></i>
+                Информация об аккаунте
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-base-200/50">
+                    <i class="bi bi-hash text-base-content/40"></i>
+                    <div>
+                        <div class="text-base-content/60">ID аккаунта</div>
+                        <div class="font-mono font-medium">{{ student.external_id|default:student.id }}</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-base-200/50">
+                    <i class="bi bi-calendar-plus text-base-content/40"></i>
+                    <div>
+                        <div class="text-base-content/60">Дата регистрации</div>
+                        <div class="font-medium">{{ student.created_at|date:"d.m.Y"|default:"—" }}</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-base-200/50">
+                    <i class="bi bi-activity text-base-content/40"></i>
+                    <div>
+                        <div class="text-base-content/60">Последняя активность</div>
+                        <div class="font-medium">{{ student.updated_at|date:"d.m.Y"|default:"—" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

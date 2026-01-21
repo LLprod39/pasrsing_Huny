@@ -3,63 +3,121 @@
 {% block title %}Шаг 2 — Курс{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-10">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h2 class="mb-0">Шаг 2 — Курс (семестр {{ semester_number }})</h2>
-      <a class="btn btn-outline-secondary" href="{% url 'web:flow_semesters' %}">Назад: семестр</a>
-    </div>
+<div class="max-w-5xl mx-auto">
+  <!-- Stepper -->
+  <ul class="steps steps-horizontal w-full mb-8" data-aos="fade-up">
+    <li class="step step-primary">Семестр</li>
+    <li class="step step-primary">Курс</li>
+    <li class="step">Материалы</li>
+  </ul>
 
-    <div class="card p-4 mb-3">
-      <form method="post" class="d-flex gap-2 flex-wrap">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="sync" />
-        <button class="btn btn-outline-primary">
-          <i class="bi bi-arrow-repeat"></i> Синхронизировать курсы
-        </button>
-        <a class="btn btn-outline-secondary" href="{% url 'web:jobs' %}">Открыть jobs</a>
-      </form>
-      <p class="text-muted mt-3 mb-0">
-        После синхронизации выберите курс, по которому нужно проходить материалы.
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8" data-aos="fade-up">
+    <div>
+      <h1 class="text-3xl font-display font-bold mb-2">
+        <span class="gradient-text">Шаг 2</span> — Выбор курса
+      </h1>
+      <p class="text-base-content/60">
+        Семестр <span class="badge badge-primary badge-lg ml-1">{{ semester_number }}</span>
       </p>
     </div>
+    <a href="{% url 'web:flow_semesters' %}" class="btn btn-ghost gap-2">
+      <i class="bi bi-arrow-left"></i>
+      Назад к семестрам
+    </a>
+  </div>
 
-    <div class="card p-4">
-      <h5 class="mb-3">Курсы</h5>
-
-      {% if courses %}
+  <!-- Actions Card -->
+  <div class="card glass mb-6" data-aos="fade-up" data-aos-delay="100">
+    <div class="card-body p-6">
+      <div class="flex flex-wrap gap-3">
         <form method="post">
           {% csrf_token %}
-          <input type="hidden" name="action" value="select" />
-          <div class="table-responsive">
-            <table class="table align-middle">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Название</th>
-                  <th>Тип контроля</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for c in courses %}
-                  <tr>
-                    <td style="width:42px;">
-                      <input class="form-check-input" type="radio" name="course_id" value="{{ c.id }}" {% if selected_course_id == c.id %}checked{% endif %}/>
-                    </td>
-                    <td>{{ c.name }}</td>
-                    <td class="text-muted">{{ c.control_type }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          <button class="btn btn-primary">Выбрать и продолжить</button>
+          <input type="hidden" name="action" value="sync" />
+          <button class="btn btn-primary btn-shine gap-2">
+            <i class="bi bi-arrow-repeat"></i>
+            Синхронизировать курсы
+          </button>
         </form>
+        <a href="{% url 'web:jobs' %}" class="btn btn-ghost gap-2">
+          <i class="bi bi-list-task"></i>
+          Просмотр задач
+        </a>
+      </div>
+      <p class="text-base-content/50 text-sm mt-4 mb-0">
+        <i class="bi bi-info-circle mr-1"></i>
+        После синхронизации выберите курс для прохождения материалов.
+      </p>
+    </div>
+  </div>
+
+  <!-- Courses Card -->
+  <div class="card glass" data-aos="fade-up" data-aos-delay="150">
+    <div class="card-body p-6">
+      <h2 class="card-title text-xl font-display mb-6">
+        <i class="bi bi-book text-emerald-400 mr-2"></i>
+        Курсы семестра
+      </h2>
+
+      {% if courses %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="select" />
+
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr class="border-b border-base-content/10">
+                <th class="bg-transparent w-12"></th>
+                <th class="bg-transparent text-base-content/60">Название курса</th>
+                <th class="bg-transparent text-base-content/60">Тип контроля</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in courses %}
+              <tr class="hover cursor-pointer" onclick="this.querySelector('input[type=radio]').click()">
+                <td>
+                  <input type="radio" name="course_id" value="{{ c.id }}" class="radio radio-primary" {% if selected_course_id == c.id %}checked{% endif %} />
+                </td>
+                <td>
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                      <i class="bi bi-book text-emerald-400"></i>
+                    </div>
+                    <div>
+                      <div class="font-medium">{{ c.name }}</div>
+                      {% if selected_course_id == c.id %}
+                      <div class="text-success text-xs">✓ Выбран</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="badge badge-ghost">{{ c.control_type|default:"—" }}</div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-6">
+          <button class="btn btn-primary btn-lg btn-shine gap-2">
+            Выбрать и продолжить
+            <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+      </form>
       {% else %}
-        <p class="text-muted mb-0">Курсы ещё не загружены. Нажмите «Синхронизировать курсы».</p>
+      <div class="text-center py-12">
+        <div class="w-16 h-16 rounded-2xl bg-base-200 flex items-center justify-center mx-auto mb-4">
+          <i class="bi bi-book text-3xl text-base-content/30"></i>
+        </div>
+        <p class="text-base-content/60 mb-4">Курсы ещё не загружены</p>
+        <p class="text-base-content/40 text-sm">Нажмите «Синхронизировать курсы»</p>
+      </div>
       {% endif %}
     </div>
   </div>
 </div>
 {% endblock %}
-

@@ -152,6 +152,11 @@ CELERY_TASK_ALWAYS_EAGER = os.environ.get("CELERY_TASK_ALWAYS_EAGER", "0").strip
 CREDENTIAL_ENCRYPTION_KEY = os.environ.get("CREDENTIAL_ENCRYPTION_KEY", "").strip()
 
 
+# ===== Stripe (Billing) =====
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+
+
 
 # ===== Admin UI (Unfold) =====
 UNFOLD = {
@@ -217,3 +222,4 @@ UNFOLD = {
     },
 }
 
+# Trigger reload

@@ -330,9 +330,20 @@ def jobs(request: HttpRequest) -> HttpResponse:
     """Список jobs (задач синхронизации) студента."""
     student: Student = request.student
     jobs_list = Job.objects.filter(student=student).order_by("-created_at")
+    
+    # Calculate statistics
+    total_jobs = jobs_list.count()
+    completed_jobs = jobs_list.filter(status=JobStatus.COMPLETED).count()
+    running_jobs = jobs_list.filter(status=JobStatus.RUNNING).count()
+    failed_jobs = jobs_list.filter(status=JobStatus.FAILED).count()
+    
     context = {
         "student": student,
         "jobs": jobs_list,
+        "total_jobs": total_jobs,
+        "completed_jobs": completed_jobs,
+        "running_jobs": running_jobs,
+        "failed_jobs": failed_jobs,
     }
     return render(request, "web/jobs.html", context)
 

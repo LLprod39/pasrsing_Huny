@@ -3,24 +3,75 @@
 {% block title %}Вход - Synergy Bot{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <div class="card p-4">
-            <h2 class="mb-4">Вход</h2>
-            <form method="post">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label class="form-label">Email или ID</label>
-                    {{ form.identifier }}
-                    {% if form.identifier.errors %}
-                        <div class="text-danger small">{{ form.identifier.errors }}</div>
-                    {% endif %}
+<div class="min-h-[80vh] flex items-center justify-center py-12">
+    <div class="w-full max-w-md" data-aos="fade-up">
+        <!-- Card -->
+        <div class="card glass shadow-2xl">
+            <div class="card-body p-8 md:p-10">
+                <!-- Header -->
+                <div class="text-center mb-8">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center mx-auto mb-6 shadow-lg glow-primary">
+                        <i class="bi bi-person-check text-white text-2xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-display font-bold mb-2">С возвращением!</h1>
+                    <p class="text-base-content/60">Введите данные для входа в систему</p>
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Войти</button>
-            </form>
-            <hr>
-            <p class="text-center text-muted">
-                Нет аккаунта? <a href="{% url 'web:register' %}">Зарегистрироваться</a>
+
+                <!-- Form -->
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+
+                    <!-- Email/ID Field -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">
+                                <i class="bi bi-envelope mr-2 text-brand-400"></i>
+                                Email или Telegram ID
+                            </span>
+                        </label>
+                        <input type="text" name="identifier"
+                            class="input input-bordered w-full bg-base-200/50 focus:bg-base-200 input-glow transition-all"
+                            placeholder="example@mail.com или 123456789" value="{{ form.identifier.value|default:'' }}"
+                            required>
+                        {% if form.identifier.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">
+                                <i class="bi bi-exclamation-circle mr-1"></i>
+                                {{ form.identifier.errors.0 }}
+                            </span>
+                        </label>
+                        {% endif %}
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary btn-block btn-lg btn-shine gap-2 shadow-lg">
+                        Войти
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </form>
+
+                <!-- Divider -->
+                <div class="divider text-base-content/40 text-sm my-8">или</div>
+
+                <!-- Register Link -->
+                <div class="text-center">
+                    <p class="text-base-content/60">
+                        Ещё нет аккаунта?
+                        <a href="{% url 'web:register' %}"
+                            class="link link-primary font-semibold ml-1 hover:link-hover">
+                            Зарегистрироваться
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Text -->
+        <div class="text-center mt-6">
+            <p class="text-base-content/40 text-sm">
+                <i class="bi bi-shield-lock mr-1"></i>
+                Ваши данные защищены шифрованием
             </p>
         </div>
     </div>

@@ -3,29 +3,206 @@
 {% block title %}Тарифы - Synergy Bot{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Выберите тариф</h2>
-<div class="row g-4">
+<!-- Header -->
+<div class="text-center mb-12" data-aos="fade-up">
+    <div class="badge badge-primary badge-lg gap-2 mb-4">
+        <i class="bi bi-star-fill"></i>
+        Тарифные планы
+    </div>
+    <h1 class="text-4xl md:text-5xl font-display font-bold mb-4">
+        Выберите свой <span class="gradient-text-gold">план</span>
+    </h1>
+    <p class="text-base-content/60 text-lg max-w-2xl mx-auto">
+        Автоматизируйте обучение и сэкономьте десятки часов своего времени
+    </p>
+</div>
+
+<!-- Plans Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16">
     {% for plan in plans %}
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">{{ plan.name }}</h5>
-                <p class="text-muted">{{ plan.description|default:"" }}</p>
-                <h3 class="text-primary">{{ plan.price_cents|floatformat:0|default:0 }} ₽</h3>
-                <small class="text-muted">на {{ plan.duration_days }} дней</small>
+    <div class="card glass card-hover relative overflow-hidden group {% if forloop.counter == 2 %}ring-2 ring-primary{% endif %}"
+        data-aos="fade-up" data-aos-delay="{{ forloop.counter0|add:1 }}00">
+
+        <!-- Popular Badge -->
+        {% if forloop.counter == 2 %}
+        <div class="absolute top-0 left-0 right-0">
+            <div class="bg-gradient-to-r from-brand-500 to-purple-600 text-white text-center py-2 text-sm font-bold">
+                <i class="bi bi-fire mr-1"></i> Самый популярный
             </div>
-            <div class="card-footer">
-                <form method="post" action="{% url 'web:plan_pay' plan.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-primary w-100">Оплатить</button>
-                </form>
+        </div>
+        {% endif %}
+
+        <div class="card-body p-8 {% if forloop.counter == 2 %}pt-14{% endif %}">
+            <!-- Plan Icon -->
+            <div class="flex items-center gap-4 mb-6">
+                <div
+                    class="w-14 h-14 rounded-2xl bg-gradient-to-br {% if forloop.first %}from-blue-500 to-cyan-600{% elif forloop.counter == 2 %}from-brand-500 to-purple-600{% else %}from-amber-500 to-orange-600{% endif %} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                    <i
+                        class="bi bi-{% if forloop.first %}shield-check{% elif forloop.counter == 2 %}star-fill{% else %}gem{% endif %} text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold">{{ plan.name }}</h3>
+                    <p class="text-base-content/60 text-sm">{{ plan.duration_days }} дней</p>
+                </div>
             </div>
+
+            <!-- Price -->
+            <div class="mb-6">
+                <div class="flex items-baseline gap-1">
+                    <span class="text-5xl font-display font-black gradient-text">{{
+                        plan.price_cents|floatformat:0|default:0 }}</span>
+                    <span class="text-2xl text-base-content/60 font-medium">₽</span>
+                </div>
+                {% if plan.duration_days > 0 %}
+                <p class="text-base-content/50 text-sm mt-1">
+                    ≈ {{ plan.price_cents|floatformat:0|default:0|divisibleby:plan.duration_days }} ₽/день
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Description -->
+            <p class="text-base-content/60 mb-6 min-h-[48px]">
+                {{ plan.description|default:"Полный доступ к функционалу бота" }}
+            </p>
+
+            <!-- Features -->
+            <ul class="space-y-4 mb-8 flex-grow">
+                <li class="flex items-start gap-3">
+                    <div class="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center mt-0.5">
+                        <i class="bi bi-check text-success text-sm"></i>
+                    </div>
+                    <span class="text-base-content/80">Автоматическое прохождение материалов</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <div class="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center mt-0.5">
+                        <i class="bi bi-check text-success text-sm"></i>
+                    </div>
+                    <span class="text-base-content/80">Синхронизация с Synergy LMS</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <div class="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center mt-0.5">
+                        <i class="bi bi-check text-success text-sm"></i>
+                    </div>
+                    <span class="text-base-content/80">Отслеживание прогресса</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <div class="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center mt-0.5">
+                        <i class="bi bi-check text-success text-sm"></i>
+                    </div>
+                    <span class="text-base-content/80">Техподдержка 24/7</span>
+                </li>
+                {% if forloop.counter >= 2 %}
+                <li class="flex items-start gap-3">
+                    <div class="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center mt-0.5">
+                        <i class="bi bi-check text-success text-sm"></i>
+                    </div>
+                    <span class="text-base-content/80">Приоритетная обработка</span>
+                </li>
+                {% endif %}
+                {% if forloop.last %}
+                <li class="flex items-start gap-3">
+                    <div class="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center mt-0.5">
+                        <i class="bi bi-check text-success text-sm"></i>
+                    </div>
+                    <span class="text-base-content/80">VIP поддержка</span>
+                </li>
+                {% endif %}
+            </ul>
+
+            <!-- CTA Button -->
+            <form method="post" action="{% url 'web:plan_pay' plan.id %}">
+                {% csrf_token %}
+                <button type="submit"
+                    class="btn {% if forloop.counter == 2 %}btn-primary{% else %}btn-outline btn-primary{% endif %} btn-block btn-lg btn-shine gap-2">
+                    <i class="bi bi-credit-card"></i>
+                    Оплатить
+                </button>
+            </form>
         </div>
     </div>
     {% empty %}
-    <div class="col-12">
-        <p class="text-muted">Тарифы пока не доступны</p>
+    <div class="col-span-full text-center py-16">
+        <div class="card glass max-w-md mx-auto">
+            <div class="card-body items-center">
+                <div class="w-16 h-16 rounded-2xl bg-base-200 flex items-center justify-center mb-4">
+                    <i class="bi bi-inbox text-3xl text-base-content/30"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Тарифы пока не доступны</h3>
+                <p class="text-base-content/60">Пожалуйста, свяжитесь с администратором</p>
+            </div>
+        </div>
     </div>
     {% endfor %}
+</div>
+
+<!-- Trust Section -->
+<div class="card glass" data-aos="fade-up">
+    <div class="card-body py-10">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div>
+                <div
+                    class="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500/20 to-purple-600/20 flex items-center justify-center mx-auto mb-4">
+                    <i class="bi bi-shield-check text-brand-400 text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-lg mb-2">Безопасно</h3>
+                <p class="text-base-content/60 text-sm">Защита данных и полная конфиденциальность</p>
+            </div>
+            <div>
+                <div
+                    class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-600/20 flex items-center justify-center mx-auto mb-4">
+                    <i class="bi bi-lightning-charge text-emerald-400 text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-lg mb-2">Мгновенно</h3>
+                <p class="text-base-content/60 text-sm">Активация сразу после оплаты</p>
+            </div>
+            <div>
+                <div
+                    class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-600/20 flex items-center justify-center mx-auto mb-4">
+                    <i class="bi bi-headset text-amber-400 text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-lg mb-2">Поддержка 24/7</h3>
+                <p class="text-base-content/60 text-sm">Всегда готовы помочь вам</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FAQ Section -->
+<div class="mt-16" data-aos="fade-up">
+    <h2 class="text-2xl font-display font-bold text-center mb-8">Частые вопросы</h2>
+    <div class="max-w-3xl mx-auto">
+        <div class="join join-vertical w-full glass">
+            <div class="collapse collapse-arrow join-item border-b border-base-content/10">
+                <input type="radio" name="faq" checked="checked" />
+                <div class="collapse-title text-lg font-medium">
+                    Как быстро активируется подписка?
+                </div>
+                <div class="collapse-content text-base-content/70">
+                    <p>Подписка активируется мгновенно после успешной оплаты. Вы сразу получите доступ ко всем функциям.
+                    </p>
+                </div>
+            </div>
+            <div class="collapse collapse-arrow join-item border-b border-base-content/10">
+                <input type="radio" name="faq" />
+                <div class="collapse-title text-lg font-medium">
+                    Безопасно ли указывать данные от Synergy?
+                </div>
+                <div class="collapse-content text-base-content/70">
+                    <p>Да, абсолютно безопасно. Ваши данные хранятся в зашифрованном виде и используются только для
+                        авторизации на платформе.</p>
+                </div>
+            </div>
+            <div class="collapse collapse-arrow join-item">
+                <input type="radio" name="faq" />
+                <div class="collapse-title text-lg font-medium">
+                    Можно ли вернуть деньги?
+                </div>
+                <div class="collapse-content text-base-content/70">
+                    <p>В случае технических проблем со стороны сервиса мы гарантируем возврат средств. Свяжитесь с
+                        поддержкой.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

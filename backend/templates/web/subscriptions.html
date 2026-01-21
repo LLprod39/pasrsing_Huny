@@ -3,40 +3,150 @@
 {% block title %}Подписки - Synergy Bot{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Мои подписки</h2>
-<div class="card p-4">
-    {% if subscriptions %}
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Тариф</th>
-                    <th>Статус</th>
-                    <th>Начало</th>
-                    <th>Окончание</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for sub in subscriptions %}
-                <tr>
-                    <td>{{ sub.plan.name }}</td>
-                    <td>
-                        {% if sub.status == 'active' %}
-                            <span class="badge bg-success">{{ sub.get_status_display }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary">{{ sub.get_status_display }}</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ sub.starts_at|date:"d.m.Y" }}</td>
-                    <td>{{ sub.ends_at|date:"d.m.Y" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<!-- Header -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8" data-aos="fade-up">
+    <div>
+        <h1 class="text-3xl md:text-4xl font-display font-bold mb-2">
+            <i class="bi bi-credit-card text-brand-400 mr-2"></i>
+            Мои подписки
+        </h1>
+        <p class="text-base-content/60">Управление вашими активными тарифами</p>
     </div>
-    {% else %}
-    <p class="text-muted">Нет подписок</p>
-    <a href="{% url 'web:plans' %}" class="btn btn-primary">Выбрать тариф</a>
-    {% endif %}
+    <a href="{% url 'web:plans' %}" class="btn btn-primary btn-shine gap-2 shadow-lg">
+        <i class="bi bi-plus-circle"></i>
+        Купить тариф
+    </a>
 </div>
+
+{% if subscriptions %}
+<!-- Subscriptions Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" data-aos="fade-up">
+    {% for sub in subscriptions %}
+    <div class="card glass card-hover {% if sub.status == 'active' %}border-l-4 border-success{% endif %}">
+        <div class="card-body p-6">
+            <!-- Header -->
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-xl font-bold mb-1">{{ sub.plan.name }}</h3>
+                    <p class="text-base-content/50 text-sm flex items-center gap-1">
+                        <i class="bi bi-calendar-event"></i>
+                        {{ sub.plan.duration_days }} дней
+                    </p>
+                </div>
+                {% if sub.status == 'active' %}
+                <div class="badge badge-success gap-1 py-3">
+                    <i class="bi bi-check2"></i> Активна
+                </div>
+                {% elif sub.status == 'expired' %}
+                <div class="badge badge-ghost gap-1 py-3">
+                    <i class="bi bi-clock-history"></i> Истекла
+                </div>
+                {% elif sub.status == 'cancelled' %}
+                <div class="badge badge-error gap-1 py-3">
+                    <i class="bi bi-x-circle"></i> Отменена
+                </div>
+                {% else %}
+                <div class="badge badge-ghost py-3">{{ sub.get_status_display }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Period -->
+            <div class="bg-base-200/50 rounded-xl p-4 mb-4">
+                <div class="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                        <div class="text-base-content/50 text-xs mb-1">
+                            <i class="bi bi-calendar-plus mr-1"></i>Начало
+                        </div>
+                        <div class="font-mono font-bold">{{ sub.starts_at|date:"d.m.Y" }}</div>
+                    </div>
+                    <div>
+                        <div class="text-base-content/50 text-xs mb-1">
+                            <i class="bi bi-calendar-x mr-1"></i>Окончание
+                        </div>
+                        <div class="font-mono font-bold {% if sub.status == 'active' %}text-primary{% endif %}">
+                            {{ sub.ends_at|date:"d.m.Y" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Remaining -->
+            {% if sub.status == 'active' %}
+            <div class="alert alert-info bg-info/10 border-info/30 py-3">
+                <i class="bi bi-hourglass-split"></i>
+                <div class="flex justify-between items-center w-full">
+                    <span class="text-sm">Осталось времени</span>
+                    <span class="font-bold">{{ sub.ends_at|timeuntil }}</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Description -->
+            {% if sub.plan.description %}
+            <div class="mt-4 pt-4 border-t border-base-content/10">
+                <p class="text-base-content/60 text-sm">{{ sub.plan.description }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Info Section -->
+<div class="card glass" data-aos="fade-up">
+    <div class="card-body p-6">
+        <h3 class="font-bold mb-6 flex items-center gap-2">
+            <i class="bi bi-info-circle text-brand-400"></i>
+            Информация
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-brand-500/20 flex items-center justify-center flex-shrink-0">
+                    <i class="bi bi-shield-check text-brand-400 text-xl"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-1">Автопродление</h4>
+                    <p class="text-base-content/60 text-sm">Подписки не продлеваются автоматически</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <i class="bi bi-arrow-repeat text-emerald-400 text-xl"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-1">Продление</h4>
+                    <p class="text-base-content/60 text-sm">Купите новый тариф до окончания текущего</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                    <i class="bi bi-headset text-amber-400 text-xl"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-1">Поддержка</h4>
+                    <p class="text-base-content/60 text-sm">Мы всегда готовы помочь вам</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- Empty State -->
+<div class="card glass" data-aos="fade-up">
+    <div class="card-body py-16 text-center">
+        <div class="w-20 h-20 rounded-2xl bg-base-200 flex items-center justify-center mx-auto mb-6">
+            <i class="bi bi-credit-card-2-front text-4xl text-base-content/30"></i>
+        </div>
+        <h2 class="text-2xl font-bold mb-3">У вас нет активных подписок</h2>
+        <p class="text-base-content/60 mb-8 max-w-md mx-auto">
+            Выберите подходящий тариф и начните автоматизировать своё обучение уже сегодня
+        </p>
+        <a href="{% url 'web:plans' %}" class="btn btn-primary btn-lg btn-shine gap-2 shadow-lg">
+            <i class="bi bi-stars"></i>
+            Выбрать тариф
+        </a>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

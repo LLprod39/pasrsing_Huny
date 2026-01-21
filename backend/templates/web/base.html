@@ -1,88 +1,425 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="night">
+{% load static %}
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Synergy Bot{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Tailwind CSS + DaisyUI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+
+    <!-- Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+
+    <!-- Animations -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                        'display': ['Space Grotesk', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        'brand': {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'gradient': 'gradient 8s ease infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        gradient: {
+                            '0%, 100%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' },
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)' },
+                            '100%': { boxShadow: '0 0 40px rgba(99, 102, 241, 0.6)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --success: #10b981;
-            --danger: #ef4444;
+        * {
+            font-family: 'Inter', system-ui, sans-serif;
         }
-        body {
-            background: #f8fafc;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
-        .navbar {
-            background: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
         }
-        .main-content {
-            min-height: calc(100vh - 60px);
-            padding: 2rem 0;
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #6366f1, #8b5cf6);
+            border-radius: 10px;
         }
-        .card {
-            border: none;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border-radius: 12px;
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #4f46e5, #7c3aed);
         }
-        .btn-primary {
-            background: var(--primary);
-            border: none;
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .btn-primary:hover {
-            background: var(--primary-dark);
+
+        .glass-strong {
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .gradient-text-gold {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Animated gradient background */
+        .animated-gradient {
+            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #1e3a5f);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        /* Glow effects */
+        .glow-primary {
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+        }
+
+        .glow-success {
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+        }
+
+        /* Card hover effects */
+        .card-hover {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.25);
+        }
+
+        /* Button shine effect */
+        .btn-shine {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-shine::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-shine:hover::before {
+            left: 100%;
+        }
+
+        /* Floating orbs background */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .orb-1 {
+            width: 600px;
+            height: 600px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            top: -200px;
+            right: -200px;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            bottom: -100px;
+            left: -100px;
+            animation: float 10s ease-in-out infinite reverse;
+        }
+
+        /* Input focus effects */
+        .input-glow:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3), 0 0 20px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Stats counter animation */
+        .counter {
+            font-feature-settings: "tnum";
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Tooltip custom */
+        .tooltip-primary::before {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        }
+
+        /* DaisyUI theme overrides */
+        [data-theme="night"] {
+            --rounded-btn: 0.75rem;
         }
     </style>
+
     {% block extra_css %}{% endblock %}
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-light">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="{% url 'web:index' %}">
-                <i class="bi bi-robot"></i> Synergy Bot
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+
+<body class="min-h-screen animated-gradient">
+    <!-- Background Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <!-- Navbar -->
+    <div class="navbar glass-strong fixed top-0 left-0 right-0 z-50 px-4 lg:px-8 py-3">
+        <div class="navbar-start">
+            <div class="dropdown">
+                <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
+                    <i class="bi bi-list text-xl"></i>
+                </div>
+                <ul tabindex="0"
+                    class="menu menu-sm dropdown-content mt-3 z-[1] p-3 shadow-2xl glass rounded-box w-56 gap-1">
                     {% if student %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'web:dashboard' %}"><i class="bi bi-speedometer2"></i> Личный кабинет</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'web:flow_semesters' %}"><i class="bi bi-stars"></i> Прохождение</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'web:plans' %}"><i class="bi bi-credit-card"></i> Тарифы</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'web:jobs' %}"><i class="bi bi-list-task"></i> Задачи</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'web:profile' %}"><i class="bi bi-person"></i> {{ student.full_name|default:student.email }}</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'web:logout' %}"><i class="bi bi-box-arrow-right"></i> Выход</a></li>
+                    <li><a href="{% url 'web:dashboard' %}" class="flex items-center gap-3 py-3">
+                            <i class="bi bi-speedometer2 text-brand-400"></i> Личный кабинет
+                        </a></li>
+                    <li><a href="{% url 'web:flow_semesters' %}" class="flex items-center gap-3 py-3">
+                            <i class="bi bi-stars text-purple-400"></i> Прохождение
+                        </a></li>
+                    <li><a href="{% url 'web:plans' %}" class="flex items-center gap-3 py-3">
+                            <i class="bi bi-credit-card text-amber-400"></i> Тарифы
+                        </a></li>
+                    <li><a href="{% url 'web:jobs' %}" class="flex items-center gap-3 py-3">
+                            <i class="bi bi-list-task text-cyan-400"></i> Задачи
+                        </a></li>
+                    <div class="divider my-1"></div>
+                    <li><a href="{% url 'web:profile' %}" class="flex items-center gap-3 py-3">
+                            <i class="bi bi-person text-green-400"></i> Профиль
+                        </a></li>
+                    <li><a href="{% url 'web:logout' %}" class="flex items-center gap-3 py-3 text-error">
+                            <i class="bi bi-box-arrow-right"></i> Выход
+                        </a></li>
                     {% else %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'web:login' %}">Вход</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'web:register' %}">Регистрация</a></li>
+                    <li><a href="{% url 'web:login' %}" class="py-3">Вход</a></li>
+                    <li><a href="{% url 'web:register' %}" class="py-3">Регистрация</a></li>
                     {% endif %}
                 </ul>
             </div>
+            <a href="{% url 'web:index' %}" class="flex items-center gap-3 group">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                    <i class="bi bi-robot text-white text-lg"></i>
+                </div>
+                <span class="font-display font-bold text-xl hidden sm:inline gradient-text">Synergy Bot</span>
+            </a>
         </div>
-    </nav>
 
-    <main class="main-content">
-        <div class="container">
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="navbar-center hidden lg:flex">
+            {% if student %}
+            <ul class="menu menu-horizontal px-1 gap-1">
+                <li>
+                    <a href="{% url 'web:dashboard' %}"
+                        class="flex items-center gap-2 hover:bg-brand-500/10 rounded-xl px-4">
+                        <i class="bi bi-speedometer2 text-brand-400"></i>
+                        <span>Кабинет</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'web:flow_semesters' %}"
+                        class="flex items-center gap-2 hover:bg-purple-500/10 rounded-xl px-4">
+                        <i class="bi bi-stars text-purple-400"></i>
+                        <span>Прохождение</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'web:plans' %}"
+                        class="flex items-center gap-2 hover:bg-amber-500/10 rounded-xl px-4">
+                        <i class="bi bi-credit-card text-amber-400"></i>
+                        <span>Тарифы</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'web:jobs' %}" class="flex items-center gap-2 hover:bg-cyan-500/10 rounded-xl px-4">
+                        <i class="bi bi-list-task text-cyan-400"></i>
+                        <span>Задачи</span>
+                    </a>
+                </li>
+            </ul>
+            {% endif %}
+        </div>
+
+        <div class="navbar-end gap-2">
+            {% if student %}
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button"
+                    class="btn btn-ghost btn-circle avatar ring-2 ring-brand-500/30 hover:ring-brand-500">
+                    <div
+                        class="w-10 rounded-full bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center">
+                        <span class="text-white font-bold">{{ student.full_name|first|upper|default:"U" }}</span>
                     </div>
+                </div>
+                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-3 shadow-2xl glass rounded-box w-56">
+                    <li class="menu-title px-4 py-2">
+                        <span class="text-base-content/70">{{ student.full_name|default:student.email }}</span>
+                    </li>
+                    <li><a href="{% url 'web:profile' %}" class="flex items-center gap-3 py-3">
+                            <i class="bi bi-person-gear text-brand-400"></i> Настройки профиля
+                        </a></li>
+                    <li><a href="{% url 'web:synergy_setup' %}" class="flex items-center gap-3 py-3">
+                            <i class="bi bi-shield-lock text-amber-400"></i> Synergy доступ
+                        </a></li>
+                    <div class="divider my-1"></div>
+                    <li><a href="{% url 'web:logout' %}" class="flex items-center gap-3 py-3 text-error">
+                            <i class="bi bi-box-arrow-right"></i> Выйти
+                        </a></li>
+                </ul>
+            </div>
+            {% else %}
+            <a href="{% url 'web:login' %}" class="btn btn-ghost btn-sm">Вход</a>
+            <a href="{% url 'web:register' %}" class="btn btn-primary btn-sm btn-shine">Регистрация</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="pt-24 pb-12 px-4 lg:px-8 min-h-screen">
+        <div class="max-w-7xl mx-auto">
+            <!-- Alerts -->
+            {% if messages %}
+            <div class="space-y-3 mb-6" data-aos="fade-down">
+                {% for message in messages %}
+                <div
+                    class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %} shadow-lg glass">
+                    <i
+                        class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} text-lg"></i>
+                    <span>{{ message }}</span>
+                    <button class="btn btn-ghost btn-xs btn-circle" onclick="this.parentElement.remove()">
+                        <i class="bi bi-x text-lg"></i>
+                    </button>
+                </div>
                 {% endfor %}
+            </div>
             {% endif %}
 
             {% block content %}{% endblock %}
         </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Footer -->
+    <footer class="footer footer-center p-6 glass-strong text-base-content/60 text-sm">
+        <aside>
+            <p>© 2024 Synergy Bot — Автоматизация обучения</p>
+        </aside>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        // Initialize AOS
+        AOS.init({
+            duration: 600,
+            easing: 'ease-out-cubic',
+            once: true,
+            offset: 50,
+        });
+
+        // Counter animation
+        function animateCounter(el) {
+            const target = parseInt(el.getAttribute('data-target'));
+            const duration = 1500;
+            const start = 0;
+            const startTime = performance.now();
+
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(start + (target - start) * easeOut);
+                el.textContent = current.toLocaleString();
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            requestAnimationFrame(update);
+        }
+
+        // Observe counters
+        document.querySelectorAll('[data-target]').forEach(el => {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        animateCounter(el);
+                        observer.unobserve(el);
+                    }
+                });
+            });
+            observer.observe(el);
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>

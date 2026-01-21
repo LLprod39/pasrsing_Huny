@@ -1,0 +1,25 @@
+{# Expects: current_step (1..3) #}
+<div class="app-stepper mb-3" aria-label="Прогресс прохождения">
+  <div class="app-step {% if current_step > 1 %}is-done{% elif current_step == 1 %}is-active{% endif %}">
+    <div class="app-step-num">1</div>
+    <div>
+      <div class="app-step-title">Семестр</div>
+      <div class="app-step-desc">Синхронизация и выбор</div>
+    </div>
+  </div>
+  <div class="app-step {% if current_step > 2 %}is-done{% elif current_step == 2 %}is-active{% endif %}">
+    <div class="app-step-num">2</div>
+    <div>
+      <div class="app-step-title">Курс</div>
+      <div class="app-step-desc">Выберите нужный курс</div>
+    </div>
+  </div>
+  <div class="app-step {% if current_step == 3 %}is-active{% endif %}">
+    <div class="app-step-num">3</div>
+    <div>
+      <div class="app-step-title">Материалы</div>
+      <div class="app-step-desc">Запуск задач (видео/тесты)</div>
+    </div>
+  </div>
+</div>
+

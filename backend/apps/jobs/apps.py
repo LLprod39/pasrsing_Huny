@@ -20,4 +20,3 @@ class JobsConfig(AppConfig):
         except Exception:
             # Don't break Django startup if Celery isn't configured yet.
             return
-

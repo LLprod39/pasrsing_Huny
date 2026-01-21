@@ -3,69 +3,128 @@
 {% block title %}Шаг 1 — Семестр{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-8">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h2 class="mb-0">Шаг 1 — Семестр</h2>
-      <a class="btn btn-outline-secondary" href="{% url 'web:dashboard' %}">Личный кабинет</a>
-    </div>
+<div class="max-w-4xl mx-auto">
+  <!-- Stepper -->
+  <ul class="steps steps-horizontal w-full mb-8" data-aos="fade-up">
+    <li class="step step-primary">Семестр</li>
+    <li class="step">Курс</li>
+    <li class="step">Материалы</li>
+  </ul>
 
-    <div class="card p-4 mb-3">
-      <div class="d-flex gap-2 flex-wrap">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8" data-aos="fade-up">
+    <div>
+      <h1 class="text-3xl font-display font-bold mb-2">
+        <span class="gradient-text">Шаг 1</span> — Выбор семестра
+      </h1>
+      <p class="text-base-content/60">Выберите семестр для прохождения материалов</p>
+    </div>
+    <a href="{% url 'web:dashboard' %}" class="btn btn-ghost gap-2">
+      <i class="bi bi-arrow-left"></i>
+      Личный кабинет
+    </a>
+  </div>
+
+  <!-- Actions Card -->
+  <div class="card glass mb-6" data-aos="fade-up" data-aos-delay="100">
+    <div class="card-body p-6">
+      <div class="flex flex-wrap gap-3">
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="action" value="sync" />
-          <button class="btn btn-outline-primary">
-            <i class="bi bi-arrow-repeat"></i> Синхронизировать семестры
+          <button class="btn btn-outline btn-primary gap-2">
+            <i class="bi bi-arrow-repeat"></i>
+            Синхронизировать семестры
           </button>
         </form>
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="action" value="sync_full" />
-          <button class="btn btn-primary">
-            <i class="bi bi-lightning-charge"></i> Синхронизировать всё (семестры/курсы/занятия)
+          <button class="btn btn-primary btn-shine gap-2">
+            <i class="bi bi-lightning-charge"></i>
+            Полная синхронизация
           </button>
         </form>
-        <a class="btn btn-outline-secondary" href="{% url 'web:synergy_setup' %}">
-          <i class="bi bi-key"></i> Synergy логин/пароль
+        <a href="{% url 'web:synergy_setup' %}" class="btn btn-ghost gap-2">
+          <i class="bi bi-key"></i>
+          Synergy доступ
         </a>
       </div>
-      <p class="text-muted mt-3 mb-0">
-        Если у вас подписка на 1 семестр — он будет доступен только один и выберется автоматически.
+      <p class="text-base-content/50 text-sm mt-4 mb-0">
+        <i class="bi bi-info-circle mr-1"></i>
+        "Полная синхронизация" загрузит семестры, курсы и материалы за один раз.
       </p>
     </div>
+  </div>
 
-    <div class="card p-4">
-      <h5 class="mb-3">Доступные семестры</h5>
+  <!-- Semesters Card -->
+  <div class="card glass" data-aos="fade-up" data-aos-delay="150">
+    <div class="card-body p-6">
+      <h2 class="card-title text-xl font-display mb-6">
+        <i class="bi bi-calendar3 text-brand-400 mr-2"></i>
+        Доступные семестры
+      </h2>
 
       {% if semesters %}
-        {% if locked_single %}
-          <div class="alert alert-success">
-            Подписка ограничена одним семестром. Выбран семестр: <strong>{{ selected }}</strong>
-          </div>
-          <a class="btn btn-primary" href="{% url 'web:flow_courses' %}">Дальше: курсы</a>
-        {% else %}
-          <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="select" />
-            <div class="list-group">
-              {% for n in semesters %}
-                <label class="list-group-item d-flex align-items-center gap-2">
-                  <input class="form-check-input" type="radio" name="semester_number" value="{{ n }}" {% if selected == n %}checked{% endif %}/>
-                  <span>Семестр {{ n }}</span>
-                </label>
-              {% endfor %}
-            </div>
-            <button class="btn btn-primary mt-3">Выбрать и продолжить</button>
-          </form>
-        {% endif %}
+      {% if locked_single %}
+      <div class="alert alert-success mb-6">
+        <i class="bi bi-lock text-lg"></i>
+        <div>
+          <div class="font-bold">Подписка ограничена одним семестром</div>
+          <div class="text-sm opacity-80">Выбран семестр: <strong>{{ selected }}</strong></div>
+        </div>
+      </div>
+      <a href="{% url 'web:flow_courses' %}" class="btn btn-primary btn-lg btn-shine gap-2 shadow-lg">
+        Продолжить
+        <i class="bi bi-arrow-right"></i>
+      </a>
       {% else %}
-        <p class="text-muted mb-0">
-          Семестры ещё не загружены. Нажмите «Синхронизировать семестры».
-        </p>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="select" />
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          {% for n in semesters %}
+          <label class="cursor-pointer">
+            <input type="radio" name="semester_number" value="{{ n }}" class="peer hidden" {% if n == selected %}checked{% endif %} />
+            <div
+              class="card bg-base-200/50 border-2 border-transparent hover:border-brand-500/50 peer-checked:border-brand-500 peer-checked:bg-brand-500/10 transition-all">
+              <div class="card-body p-5 flex-row items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-brand-500/20 flex items-center justify-center">
+                  <span class="text-brand-400 font-bold text-xl">{{ n }}</span>
+                </div>
+                <div class="flex-1">
+                  <div class="font-bold">Семестр {{ n }}</div>
+                  <div class="text-base-content/50 text-sm">
+                    {% if n == selected %}
+                    <span class="text-success">✓ Выбран</span>
+                    {% else %}
+                    Нажмите для выбора
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+
+        <button class="btn btn-primary btn-lg btn-shine gap-2">
+          Выбрать и продолжить
+          <i class="bi bi-arrow-right"></i>
+        </button>
+      </form>
+      {% endif %}
+      {% else %}
+      <div class="text-center py-12">
+        <div class="w-16 h-16 rounded-2xl bg-base-200 flex items-center justify-center mx-auto mb-4">
+          <i class="bi bi-calendar-x text-3xl text-base-content/30"></i>
+        </div>
+        <p class="text-base-content/60 mb-4">Семестры ещё не загружены</p>
+        <p class="text-base-content/40 text-sm">Нажмите «Синхронизировать семестры» или «Полная синхронизация»</p>
+      </div>
       {% endif %}
     </div>
   </div>
 </div>
 {% endblock %}
-

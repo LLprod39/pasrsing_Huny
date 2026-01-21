@@ -1,0 +1,273 @@
+/* Кастомные стили для админ панели */
+
+/* Цветовая схема статусов */
+:root {
+    --status-pending: #f59e0b;
+    --status-running: #3b82f6;
+    --status-completed: #10b981;
+    --status-failed: #ef4444;
+    --status-cancelled: #6b7280;
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+}
+
+/* Улучшенные карточки */
+.admin-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin-bottom: 1.5rem;
+}
+
+.admin-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Бейджи статусов */
+.badge-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-status.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-status.running {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-status.completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-status.failed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-status.cancelled {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Прогресс-бары */
+.progress-bar-custom {
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    transition: width 0.3s ease;
+    border-radius: 4px;
+}
+
+.progress-bar-fill.animated {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Кнопки быстрых действий */
+.quick-action-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+}
+
+.quick-action-btn.primary {
+    background: var(--primary);
+    color: white;
+}
+
+.quick-action-btn.primary:hover {
+    background: var(--primary-dark);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+}
+
+.quick-action-btn.success {
+    background: var(--success);
+    color: white;
+}
+
+.quick-action-btn.success:hover {
+    background: #059669;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Таблицы */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th {
+    background: #f9fafb;
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.admin-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-table tr:hover {
+    background: #f9fafb;
+}
+
+/* Иконки */
+.icon-status {
+    font-size: 1.25rem;
+    margin-right: 0.5rem;
+}
+
+/* Анимации загрузки */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f4f6;
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Улучшенные формы */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Алерты */
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.alert.success {
+    background: #d1fae5;
+    color: #065f46;
+    border-left: 4px solid var(--success);
+}
+
+.alert.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid var(--danger);
+}
+
+.alert.warning {
+    background: #fef3c7;
+    color: #92400e;
+    border-left: 4px solid var(--warning);
+}
+
+.alert.info {
+    background: #dbeafe;
+    color: #1e40af;
+    border-left: 4px solid var(--info);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .admin-card {
+        padding: 1rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Улучшенная навигация */
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.sidebar-link:hover {
+    background: #f3f4f6;
+}
+
+/* Выделение выбранных элементов */
+.selected-item {
+    background: #f0f4ff;
+    border: 2px solid var(--primary);
+}
+
+/* Плавные переходы */
+* {
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
